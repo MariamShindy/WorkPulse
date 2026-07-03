@@ -1,0 +1,20 @@
+name: workpulse
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/WorkPulse.API/Dockerfile
+    container_name: workpulse-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=workpulse;Username=workpulse;Password=workpulse
+      - ConnectionStrings__Redis=redis:6379
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

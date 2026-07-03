@@ -1,0 +1,6 @@
+@WorkPulse.API_HostAddress = http://localhost:5192
+
+GET {{WorkPulse.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
