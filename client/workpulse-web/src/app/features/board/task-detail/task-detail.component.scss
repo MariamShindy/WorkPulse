@@ -1,0 +1,296 @@
+.drawer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+
+  button {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 0.5rem 0.7rem;
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+
+    &:hover {
+      color: var(--text);
+    }
+
+    &.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+  }
+}
+
+.inline-check {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+
+  input {
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--accent);
+  }
+}
+
+.sub-section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+
+  h3 {
+    font-size: 0.92rem;
+    margin-bottom: 0.6rem;
+  }
+
+  select {
+    margin-top: 0.6rem;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 0;
+    opacity: 0.7;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+.dep-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 0.6rem;
+    background: var(--bg-elevated);
+  }
+}
+
+.dep-title {
+  flex: 1;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dep-form {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 0.5rem;
+}
+
+.comment-form {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+  margin-bottom: 1rem;
+
+  textarea {
+    justify-self: stretch;
+  }
+}
+
+.comment-list,
+.activity-list,
+.worklog-list,
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.comment-list li {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  background: var(--bg-elevated);
+}
+
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  strong {
+    font-size: 0.88rem;
+    flex: 1;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+}
+
+.comment-body {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+}
+
+.comment-edit {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.activity-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+
+  p {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+}
+
+.worklog-form {
+  display: grid;
+  grid-template-columns: 90px 150px 1fr auto;
+  align-items: end;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+
+  label {
+    display: grid;
+    gap: 0.3rem;
+
+    span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  }
+}
+
+.total {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.worklog-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  background: var(--bg-elevated);
+
+  > strong {
+    flex-shrink: 0;
+  }
+}
+
+.worklog-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+
+  span {
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+}
+
+.upload-box {
+  display: block;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  background: var(--bg-elevated);
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+
+  strong {
+    font-size: 0.88rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .dep-form,
+  .worklog-form {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}

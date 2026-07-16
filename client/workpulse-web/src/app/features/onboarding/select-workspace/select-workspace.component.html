@@ -1,0 +1,47 @@
+<section class="auth-card">
+  <div class="auth-brand">
+    <span class="logo-mark">WP</span>
+    <h1>Choose a workspace</h1>
+    <p>Pick the workspace you want to continue in.</p>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="workspace-list" aria-hidden="true">
+      <div class="workspace-card skeleton"></div>
+      <div class="workspace-card skeleton"></div>
+    </div>
+  } @else {
+    <div class="workspace-list">
+      @for (company of companies(); track company.id) {
+        <button
+          type="button"
+          class="workspace-card"
+          [disabled]="switchingId() !== null"
+          (click)="select(company)"
+        >
+          @if (company.logoUrl) {
+            <img class="workspace-logo" [src]="company.logoUrl" [alt]="company.name" />
+          } @else {
+            <span class="workspace-initials">{{ initials(company.name) }}</span>
+          }
+          <span class="workspace-meta">
+            <span class="workspace-name">{{ company.name }}</span>
+            <span class="workspace-slug">{{ company.slug }}</span>
+          </span>
+          <span class="badge badge-accent">{{ company.role }}</span>
+          @if (switchingId() === company.id) {
+            <span class="workspace-opening">Opening…</span>
+          }
+        </button>
+      }
+    </div>
+  }
+
+  <div class="workspace-actions">
+    <a class="btn btn-ghost" routerLink="/onboarding/workspace">Create a new workspace</a>
+  </div>
+</section>

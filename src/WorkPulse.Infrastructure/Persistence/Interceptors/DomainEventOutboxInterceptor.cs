@@ -45,9 +45,9 @@ public sealed class DomainEventOutboxInterceptor : SaveChangesInterceptor
             .Select(domainEvent => new OutboxMessage
             {
                 Id = domainEvent.EventId,
-                OccurredOnUtc = domainEvent.OccurredOnUtc,
-                Type = domainEvent.GetType().AssemblyQualifiedName!,
-                Content = JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), SerializerOptions)
+                CreatedAtUtc = domainEvent.OccurredOnUtc,
+                EventType = domainEvent.GetType().AssemblyQualifiedName!,
+                Payload = JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), SerializerOptions)
             })
             .ToList();
 

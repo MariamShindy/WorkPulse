@@ -1,0 +1,324 @@
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="drawer-toolbar">
+  <span class="badge badge-accent">{{ task().identifier }}</span>
+  <span class="badge">{{ task().workflowStateName }}</span>
+  <span class="spacer"></span>
+  <button type="button" class="btn btn-ghost btn-sm" (click)="toggleWatch()">
+    {{ watching() ? 'Unwatch' : 'Watch' }}
+  </button>
+  <button type="button" class="btn btn-danger btn-sm" (click)="confirmDelete.set(true)">Delete</button>
+</div>
+
+<nav class="tabs" role="tablist">
+  <button type="button" [class.active]="tab() === 'details'" (click)="selectTab('details')">Details</button>
+  <button type="button" [class.active]="tab() === 'comments'" (click)="selectTab('comments')">
+    Comments ({{ comments().length }})
+  </button>
+  <button type="button" [class.active]="tab() === 'activity'" (click)="selectTab('activity')">Activity</button>
+  <button type="button" [class.active]="tab() === 'worklog'" (click)="selectTab('worklog')">
+    Work log ({{ workLogs().length }})
+  </button>
+  <button type="button" [class.active]="tab() === 'files'" (click)="selectTab('files')">
+    Files ({{ files().length }})
+  </button>
+</nav>
+
+@switch (tab()) {
+  @case ('details') {
+    <form [formGroup]="form" (ngSubmit)="save()" class="form-grid">
+      <label>
+        <span>Title</span>
+        <input type="text" formControlName="title" />
+        @if (form.controls.title.touched && form.controls.title.invalid) {
+          <span class="field-error">Title is required.</span>
+        }
+      </label>
+      <label>
+        <span>Description</span>
+        <textarea formControlName="description" rows="4"></textarea>
+      </label>
+
+      <div class="form-row">
+        <label>
+          <span>Priority</span>
+          <select formControlName="priority">
+            @for (priority of priorities; track priority) {
+              <option [value]="priority">{{ priority }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Project</span>
+          <select formControlName="projectId">
+            <option value="">None</option>
+            @for (project of projects(); track project.id) {
+              <option [value]="project.id">{{ project.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Due date</span>
+          <input type="date" formControlName="dueDate" />
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label>
+          <span>Epic</span>
+          <select formControlName="epicId">
+            <option value="">None</option>
+            @for (epic of epics(); track epic.id) {
+              <option [value]="epic.id">{{ epic.title }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          <span>Sprint</span>
+          <select formControlName="sprintId">
+            <option value="">None</option>
+            @for (sprint of sprints(); track sprint.id) {
+              <option [value]="sprint.id">{{ sprint.name }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label>
+          <span>Story points</span>
+          <input type="number" formControlName="storyPoints" min="0" />
+        </label>
+        <label>
+          <span>Estimated hours</span>
+          <input type="number" formControlName="estimatedHours" min="0" step="0.5" />
+        </label>
+        <label class="inline-check">
+          <span>Blocked</span>
+          <input type="checkbox" formControlName="isBlocked" />
+        </label>
+      </div>
+
+      @if (form.controls.isBlocked.value) {
+        <label>
+          <span>Blocked reason</span>
+          <input type="text" formControlName="blockedReason" />
+        </label>
+      }
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save task' }}
+        </button>
+      </div>
+    </form>
+
+    <section class="sub-section">
+      <h3>Assignees</h3>
+      <div class="chips">
+        @for (assignee of assignees(); track assignee.id) {
+          <span class="chip">
+            {{ memberName(assignee.userId) }}
+            <button type="button" (click)="removeAssignee(assignee.userId)" aria-label="Remove assignee">✕</button>
+          </span>
+        }
+        @if (assignees().length === 0) {
+          <span class="empty">Unassigned</span>
+        }
+      </div>
+      <select #assigneeSelect (change)="addAssignee(assigneeSelect.value); assigneeSelect.value = ''">
+        <option value="">Add assignee…</option>
+        @for (member of unassignedMembers(); track member.userId) {
+          <option [value]="member.userId">{{ member.fullName }}</option>
+        }
+      </select>
+    </section>
+
+    <section class="sub-section">
+      <h3>Labels</h3>
+      <div class="chips">
+        @for (label of taskLabels(); track label.id) {
+          <span class="chip" [style.border-color]="label.color" [style.color]="label.color">
+            {{ label.name }}
+            <button type="button" (click)="removeLabel(label.id)" aria-label="Remove label">✕</button>
+          </span>
+        }
+        @if (taskLabels().length === 0) {
+          <span class="empty">No labels</span>
+        }
+      </div>
+      <select #labelSelect (change)="addLabel(labelSelect.value); labelSelect.value = ''">
+        <option value="">Add label…</option>
+        @for (label of unusedLabels(); track label.id) {
+          <option [value]="label.id">{{ label.name }}</option>
+        }
+      </select>
+    </section>
+
+    <section class="sub-section">
+      <h3>Dependencies</h3>
+      @if (dependencies().length === 0) {
+        <p class="empty">No dependencies.</p>
+      } @else {
+        <ul class="dep-list">
+          @for (dep of dependencies(); track dep.id) {
+            <li>
+              <span class="badge">{{ dep.type }}</span>
+              <span class="dep-title">{{ taskIdentifier(dep.dependsOnTaskId) }}</span>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="removeDependency(dep.id)">
+                Remove
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      <form [formGroup]="dependencyForm" (ngSubmit)="addDependency()" class="dep-form">
+        <select formControlName="dependsOnTaskId">
+          <option value="">Select task…</option>
+          @for (candidate of dependencyCandidates(); track candidate.id) {
+            <option [value]="candidate.id">{{ candidate.identifier }} — {{ candidate.title }}</option>
+          }
+        </select>
+        <select formControlName="type">
+          @for (type of dependencyTypes; track type) {
+            <option [value]="type">{{ type }}</option>
+          }
+        </select>
+        <button type="submit" class="btn btn-ghost btn-sm" [disabled]="dependencyForm.invalid">Add</button>
+      </form>
+    </section>
+  }
+
+  @case ('comments') {
+    <form [formGroup]="commentForm" (ngSubmit)="addComment()" class="comment-form">
+      <textarea formControlName="body" rows="3" placeholder="Write a comment…"></textarea>
+      <button type="submit" class="btn btn-primary btn-sm" [disabled]="commentForm.invalid">Comment</button>
+    </form>
+
+    @if (comments().length === 0) {
+      <p class="empty">No comments yet.</p>
+    } @else {
+      <ul class="comment-list">
+        @for (comment of comments(); track comment.id) {
+          <li>
+            <div class="comment-head">
+              <strong>{{ memberName(comment.authorId) }}</strong>
+              <small>
+                {{ comment.createdAtUtc | date: 'MMM d, HH:mm' }}
+                @if (comment.isEdited) {
+                  (edited)
+                }
+              </small>
+              @if (isOwnComment(comment) && editingCommentId() !== comment.id) {
+                <button type="button" class="btn btn-ghost btn-sm" (click)="startEditComment(comment)">
+                  Edit
+                </button>
+              }
+            </div>
+            @if (editingCommentId() === comment.id) {
+              <form [formGroup]="editCommentForm" (ngSubmit)="saveComment()" class="comment-edit">
+                <textarea formControlName="body" rows="2"></textarea>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="editingCommentId.set(null)">
+                    Cancel
+                  </button>
+                  <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                </div>
+              </form>
+            } @else {
+              <p class="comment-body">{{ comment.body }}</p>
+            }
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  @case ('activity') {
+    @if (activity().length === 0) {
+      <p class="empty">No recorded activity.</p>
+    } @else {
+      <ul class="activity-list">
+        @for (entry of activity(); track entry.id) {
+          <li>
+            <span class="badge">{{ entry.type }}</span>
+            <div>
+              <p>{{ entry.summary || entry.type }}</p>
+              <small>{{ memberName(entry.actorId) }} · {{ entry.createdAtUtc | date: 'MMM d, HH:mm' }}</small>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  @case ('worklog') {
+    <form [formGroup]="workLogForm" (ngSubmit)="addWorkLog()" class="worklog-form">
+      <label>
+        <span>Hours</span>
+        <input type="number" formControlName="hours" min="0.1" step="0.25" />
+      </label>
+      <label>
+        <span>Date</span>
+        <input type="date" formControlName="loggedDate" />
+      </label>
+      <label class="grow">
+        <span>Note</span>
+        <input type="text" formControlName="description" placeholder="What did you work on?" />
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm" [disabled]="workLogForm.invalid">Log</button>
+    </form>
+
+    <p class="total">Total logged: <strong>{{ task().loggedHours }}h</strong></p>
+
+    @if (workLogs().length === 0) {
+      <p class="empty">No work logged yet.</p>
+    } @else {
+      <ul class="worklog-list">
+        @for (log of workLogs(); track log.id) {
+          <li>
+            <strong>{{ log.hours }}h</strong>
+            <div class="worklog-info">
+              <span>{{ log.description || 'No note' }}</span>
+              <small>{{ memberName(log.userId) }} · {{ log.loggedDate | date: 'MMM d, y' }}</small>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="deleteWorkLog(log.id)">Delete</button>
+          </li>
+        }
+      </ul>
+    }
+  }
+
+  @case ('files') {
+    <label class="upload-box">
+      <input type="file" (change)="uploadFile($any($event.target).files)" hidden />
+      <span class="btn btn-ghost">Upload attachment (max 10 MB)</span>
+    </label>
+
+    @if (files().length === 0) {
+      <p class="empty">No attachments.</p>
+    } @else {
+      <ul class="file-list">
+        @for (file of files(); track file.id) {
+          <li>
+            <div class="file-info">
+              <strong>{{ file.fileName }}</strong>
+              <small>{{ fileSize(file.sizeBytes) }} · {{ file.createdAtUtc | date: 'MMM d, y' }}</small>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="downloadFile(file)">Download</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="deleteFile(file.id)">Delete</button>
+          </li>
+        }
+      </ul>
+    }
+  }
+}
+
+<app-confirm-dialog
+  [open]="confirmDelete()"
+  title="Delete task?"
+  [message]="'Delete “' + task().title + '”? This cannot be undone.'"
+  (confirmed)="deleteTask()"
+  (cancelled)="confirmDelete.set(false)" />

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "WorkPulse Web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "cwd": "client/workpulse-web",
+      "port": 4200
+    }
+  ]
+}

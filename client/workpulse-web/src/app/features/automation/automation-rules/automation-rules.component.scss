@@ -1,0 +1,70 @@
+.rules-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rule-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+
+  &.disabled {
+    opacity: 0.55;
+  }
+}
+
+.rule-info {
+  flex: 1;
+  min-width: 220px;
+
+  h3 {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .arrow {
+    color: var(--text-muted);
+  }
+}
+
+.rule-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.enabled-check {
+  display: inline-flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem !important;
+
+  input {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--accent);
+  }
+}
+
+textarea {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.skeleton.block {
+  height: 220px;
+  border-radius: 1rem;
+}

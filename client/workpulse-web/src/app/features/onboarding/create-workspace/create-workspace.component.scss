@@ -1,0 +1,66 @@
+:host {
+  display: block;
+  width: min(100%, 480px);
+}
+
+.auth-brand {
+  margin-bottom: 1.75rem;
+
+  h1 {
+    margin: 0.75rem 0 0.35rem;
+    font-size: 1.75rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+  }
+}
+
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: white;
+  font-weight: 700;
+}
+
+form {
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.4rem;
+
+  span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+}
+
+textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.switch-hint {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+
+  a {
+    color: var(--accent);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

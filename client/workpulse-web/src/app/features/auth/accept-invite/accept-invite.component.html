@@ -1,0 +1,43 @@
+<section class="auth-card">
+  <div class="auth-brand">
+    <span class="logo-mark">WP</span>
+    <h1>Join the workspace</h1>
+    <p>You've been invited to WorkPulse. Set up your account to accept.</p>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <p class="joining">Accepting invitation…</p>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="name-row">
+        <label>
+          <span>First name</span>
+          <input type="text" formControlName="firstName" autocomplete="given-name" />
+        </label>
+        <label>
+          <span>Last name</span>
+          <input type="text" formControlName="lastName" autocomplete="family-name" />
+        </label>
+      </div>
+
+      <label>
+        <span>Password</span>
+        <input type="password" formControlName="password" autocomplete="new-password" placeholder="Min. 8 characters" />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field-error">Password must be at least 8 characters.</span>
+        }
+      </label>
+
+      <button type="submit" class="btn btn-primary" [disabled]="!token()">Accept invitation</button>
+    </form>
+  }
+
+  <p class="auth-footer">
+    Already have an account?
+    <a routerLink="/auth/login">Sign in first</a>, then reopen this link.
+  </p>
+</section>

@@ -1,0 +1,58 @@
+<section class="page-header">
+  <div>
+    <h1>Teams</h1>
+    <p>Create and manage teams in your workspace</p>
+  </div>
+  <label class="archived-toggle">
+    <input
+      type="checkbox"
+      [checked]="includeArchived()"
+      (change)="toggleArchived($any($event.target).checked)" />
+    <span>Show archived</span>
+  </label>
+</section>
+
+<section class="panel create-panel">
+  <h2>New team</h2>
+  @if (error()) {
+    <div class="alert alert-error">{{ error() }}</div>
+  }
+  <form [formGroup]="form" (ngSubmit)="createTeam()" class="create-form">
+    <input type="text" formControlName="name" placeholder="Team name" />
+    <input type="text" formControlName="key" placeholder="Key (optional)" maxlength="6" />
+    <input type="color" formControlName="color" aria-label="Team color" />
+    <button type="submit" class="btn btn-primary" [disabled]="creating()">
+      {{ creating() ? 'Creating…' : 'Create team' }}
+    </button>
+  </form>
+  @if (form.controls.name.touched && form.controls.name.invalid) {
+    <span class="field-error">Team name is required.</span>
+  }
+</section>
+
+<section class="panel">
+  <h2>All teams</h2>
+
+  @if (loading()) {
+    <div class="skeleton card"></div>
+  } @else if (teams().length === 0) {
+    <app-empty-state
+      heading="No teams yet"
+      message="Create your first team above to start organizing work." />
+  } @else {
+    <div class="teams-grid">
+      @for (team of teams(); track team.id) {
+        <a class="team-card" [routerLink]="['/teams', team.id]" [class.archived]="team.isArchived">
+          <span class="team-key" [style.background]="team.color ? team.color + '22' : null" [style.color]="team.color">
+            {{ team.key }}
+          </span>
+          <h3>{{ team.name }}</h3>
+          <p>{{ team.description || 'No description' }}</p>
+          @if (team.isArchived) {
+            <span class="badge">Archived</span>
+          }
+        </a>
+      }
+    </div>
+  }
+</section>

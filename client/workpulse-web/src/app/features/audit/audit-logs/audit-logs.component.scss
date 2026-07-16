@@ -1,0 +1,23 @@
+.id-hint {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.changes-row td {
+  background: var(--bg-elevated);
+  white-space: normal;
+
+  pre {
+    margin: 0;
+    font-size: 0.78rem;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.skeleton.block {
+  height: 300px;
+  border-radius: 1rem;
+}

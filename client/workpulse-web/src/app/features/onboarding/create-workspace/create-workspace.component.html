@@ -1,0 +1,32 @@
+<section class="auth-card">
+  <div class="auth-brand">
+    <span class="logo-mark">WP</span>
+    <h1>Create your workspace</h1>
+    <p>Set up a company to start organizing teams and projects.</p>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error" role="alert">{{ error() }}</div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <label>
+      <span>Workspace name</span>
+      <input type="text" formControlName="name" placeholder="Acme Inc" />
+    </label>
+
+    <label>
+      <span>Description (optional)</span>
+      <textarea formControlName="description" rows="3" placeholder="What does your team work on?"></textarea>
+    </label>
+
+    <button type="submit" class="btn btn-primary" [disabled]="loading()">
+      {{ loading() ? 'Creating…' : 'Continue' }}
+    </button>
+  </form>
+
+  <p class="switch-hint">
+    Already part of a workspace?
+    <a routerLink="/onboarding/select-workspace">Choose an existing one</a>
+  </p>
+</section>

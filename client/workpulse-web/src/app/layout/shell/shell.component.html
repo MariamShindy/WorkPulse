@@ -1,0 +1,77 @@
+<div class="shell" [class.nav-open]="navOpen()">
+  <div class="backdrop" (click)="closeNav()" aria-hidden="true"></div>
+
+  <aside class="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <span class="logo-mark" aria-hidden="true">WP</span>
+      <div class="workspace">
+        <strong>{{ tenant.tenantName() ?? 'WorkPulse' }}</strong>
+        <small>Workspace</small>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (section of navSections; track section.title) {
+        <div class="nav-section">
+          <span class="nav-section-title">{{ section.title }}</span>
+          @for (item of section.items; track item.path) {
+            <a
+              [routerLink]="item.path"
+              routerLinkActive="active"
+              [attr.aria-label]="item.label"
+              (click)="closeNav()">
+              <span class="icon" aria-hidden="true">{{ item.icon }}</span>
+              <span>{{ item.label }}</span>
+            </a>
+          }
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <span class="avatar" aria-hidden="true">{{ (auth.displayName().charAt(0) || 'U').toUpperCase() }}</span>
+        <div>
+          <strong>{{ auth.displayName() }}</strong>
+          <small>{{ auth.user()?.email }}</small>
+        </div>
+      </div>
+      <div class="footer-actions">
+        <button
+          type="button"
+          class="btn btn-ghost"
+          (click)="toggleTheme()"
+          [attr.aria-label]="theme.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+          [attr.title]="theme.isDark() ? 'Light mode' : 'Dark mode'">
+          {{ theme.isDark() ? '☀' : '☾' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          (click)="logout()"
+          aria-label="Sign out">
+          Sign out
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar" role="banner">
+      <button
+        type="button"
+        class="menu-btn"
+        (click)="toggleNav()"
+        aria-label="Toggle navigation"
+        [attr.aria-expanded]="navOpen()">
+        ☰
+      </button>
+      <app-topbar-search />
+      <app-notifications />
+    </header>
+
+    <main class="content" id="main-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

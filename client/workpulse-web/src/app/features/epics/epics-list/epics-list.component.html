@@ -1,0 +1,113 @@
+<section class="page-header">
+  <div>
+    <h1>Epics</h1>
+    <p>Group work into larger initiatives</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openCreate()">New epic</button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="filters-bar">
+  <label>
+    <span>Team</span>
+    <select [value]="filterTeamId()" (change)="applyFilter('team', $any($event.target).value)">
+      <option value="">All teams</option>
+      @for (team of teams(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    <span>Status</span>
+    <select [value]="filterStatus()" (change)="applyFilter('status', $any($event.target).value)">
+      <option value="">Any status</option>
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+@if (loading()) {
+  <div class="loading-grid">
+    @for (i of [1, 2, 3]; track i) {
+      <div class="skeleton card"></div>
+    }
+  </div>
+} @else if (!paged() || paged()!.items.length === 0) {
+  <div class="panel">
+    <app-empty-state heading="No epics found" message="Create an epic to group related tasks together." />
+  </div>
+} @else {
+  <div class="epics-grid">
+    @for (epic of paged()!.items; track epic.id) {
+      <article class="epic-card">
+        <header>
+          <span class="badge" [class]="'badge ' + statusBadgeClass(epic.status)">{{ epic.status }}</span>
+          <small>{{ teamName(epic.teamId) }}</small>
+        </header>
+        <h3>{{ epic.title }}</h3>
+        <p>{{ epic.description || 'No description' }}</p>
+        <footer>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(epic)">Edit</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(epic)">Delete</button>
+        </footer>
+      </article>
+    }
+  </div>
+
+  <app-paginator [paged]="paged()" (pageChange)="load($event)" />
+}
+
+<app-modal
+  [open]="modalOpen()"
+  [title]="editingEpic() ? 'Edit epic' : 'New epic'"
+  (closed)="modalOpen.set(false)">
+  <form [formGroup]="form" (ngSubmit)="save()" class="form-grid">
+    @if (!editingEpic()) {
+      <label>
+        <span>Team</span>
+        <select formControlName="teamId">
+          @for (team of teams(); track team.id) {
+            <option [value]="team.id">{{ team.name }}</option>
+          }
+        </select>
+      </label>
+    }
+    <label>
+      <span>Title</span>
+      <input type="text" formControlName="title" />
+      @if (form.controls.title.touched && form.controls.title.invalid) {
+        <span class="field-error">Title is required.</span>
+      }
+    </label>
+    <label>
+      <span>Description</span>
+      <textarea formControlName="description" rows="3"></textarea>
+    </label>
+    <label>
+      <span>Status</span>
+      <select formControlName="status">
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ status }}</option>
+        }
+      </select>
+    </label>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : editingEpic() ? 'Save changes' : 'Create epic' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-confirm-dialog
+  [open]="deleteTarget() !== null"
+  title="Delete epic?"
+  [message]="'Delete “' + (deleteTarget()?.title ?? '') + '”? Tasks keep their other data.'"
+  (confirmed)="deleteEpic()"
+  (cancelled)="deleteTarget.set(null)" />

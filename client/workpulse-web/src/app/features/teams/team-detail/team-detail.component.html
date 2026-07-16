@@ -1,0 +1,157 @@
+<section class="page-header">
+  <div>
+    <nav class="breadcrumb">
+      <a routerLink="/teams">Teams</a> <span>/</span>
+      <strong>{{ team()?.name ?? '…' }}</strong>
+    </nav>
+    <h1>{{ team()?.name ?? 'Team' }}</h1>
+    @if (team()?.description) {
+      <p>{{ team()!.description }}</p>
+    }
+  </div>
+  <button type="button" class="btn btn-danger btn-sm" (click)="confirmArchive.set(true)">
+    Archive team
+  </button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="skeleton block"></div>
+} @else {
+  <div class="detail-grid">
+    <section class="panel">
+      <h2>Team settings</h2>
+      <form [formGroup]="teamForm" (ngSubmit)="saveTeam()" class="form-grid">
+        <label>
+          <span>Name</span>
+          <input type="text" formControlName="name" />
+          @if (teamForm.controls.name.touched && teamForm.controls.name.invalid) {
+            <span class="field-error">Name is required.</span>
+          }
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea formControlName="description" rows="2"></textarea>
+        </label>
+        <label class="color-field">
+          <span>Color</span>
+          <input type="color" formControlName="color" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">
+            {{ saving() ? 'Saving…' : 'Save changes' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Members <span class="badge">{{ members().length }}</span></h2>
+
+      <form [formGroup]="memberForm" (ngSubmit)="addMember()" class="member-add-form">
+        <select formControlName="userId">
+          <option value="" disabled>Add company member…</option>
+          @for (candidate of availableCompanyMembers(); track candidate.userId) {
+            <option [value]="candidate.userId">{{ candidate.fullName }} ({{ candidate.email }})</option>
+          }
+        </select>
+        <select formControlName="role">
+          @for (role of teamRoles; track role) {
+            <option [value]="role">{{ role }}</option>
+          }
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="memberForm.invalid">Add</button>
+      </form>
+
+      @if (members().length === 0) {
+        <p class="empty">No members yet.</p>
+      } @else {
+        <ul class="member-list">
+          @for (member of members(); track member.id) {
+            <li>
+              <span class="avatar">{{ member.fullName.charAt(0) }}</span>
+              <div class="member-info">
+                <strong>{{ member.fullName }}</strong>
+                <small>{{ member.email }}</small>
+              </div>
+              <select
+                [value]="member.role"
+                (change)="changeMemberRole(member, $any($event.target).value)"
+                aria-label="Member role">
+                @for (role of teamRoles; track role) {
+                  <option [value]="role">{{ role }}</option>
+                }
+              </select>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="removeMember(member)">
+                Remove
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+
+  <section class="panel workflow-panel">
+    <h2>Workflow states</h2>
+    <p class="hint">States define your board columns. Reorder with the arrows.</p>
+
+    <ul class="state-list">
+      @for (state of orderedStates(); track state.id; let first = $first; let last = $last) {
+        <li>
+          @if (editingStateId() === state.id) {
+            <form [formGroup]="editStateForm" (ngSubmit)="saveState()" class="state-edit-form">
+              <input type="text" formControlName="name" />
+              <select formControlName="type">
+                @for (type of stateTypes; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select>
+              <input type="color" formControlName="color" aria-label="State color" />
+              <label class="default-check">
+                <input type="checkbox" formControlName="isDefault" />
+                <span>Default</span>
+              </label>
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="editingStateId.set(null)">Cancel</button>
+            </form>
+          } @else {
+            <span class="state-dot" [style.background]="state.color"></span>
+            <strong class="state-name">{{ state.name }}</strong>
+            <span class="badge">{{ state.type }}</span>
+            @if (state.isDefault) {
+              <span class="badge badge-accent">Default</span>
+            }
+            <span class="spacer"></span>
+            <button type="button" class="icon-btn" [disabled]="first" (click)="moveState(state.id, -1)" aria-label="Move up">↑</button>
+            <button type="button" class="icon-btn" [disabled]="last" (click)="moveState(state.id, 1)" aria-label="Move down">↓</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="startEditState(state.id)">Edit</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="deleteState(state.id)">Delete</button>
+          }
+        </li>
+      }
+    </ul>
+
+    <form [formGroup]="stateForm" (ngSubmit)="addState()" class="state-add-form">
+      <input type="text" formControlName="name" placeholder="New state name" />
+      <select formControlName="type">
+        @for (type of stateTypes; track type) {
+          <option [value]="type">{{ type }}</option>
+        }
+      </select>
+      <input type="color" formControlName="color" aria-label="State color" />
+      <button type="submit" class="btn btn-primary" [disabled]="stateForm.invalid">Add state</button>
+    </form>
+  </section>
+}
+
+<app-confirm-dialog
+  [open]="confirmArchive()"
+  title="Archive team?"
+  message="The team will be hidden from active lists. Tasks are kept."
+  confirmLabel="Archive"
+  (confirmed)="archiveTeam()"
+  (cancelled)="confirmArchive.set(false)" />

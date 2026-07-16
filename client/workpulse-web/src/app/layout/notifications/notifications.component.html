@@ -1,0 +1,44 @@
+<div class="bell-wrap">
+  <button type="button" class="bell-btn" (click)="toggle()" aria-label="Notifications">
+    <span aria-hidden="true">🔔</span>
+    @if (unreadCount() > 0) {
+      <span class="unread-dot">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+    }
+  </button>
+
+  @if (open()) {
+    <div class="panel-backdrop" (click)="close()" aria-hidden="true"></div>
+    <div class="notifications-panel">
+      <header>
+        <h3>Notifications</h3>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="markAllRead()">
+          Mark all read
+        </button>
+      </header>
+
+      @if (loading()) {
+        <div class="skeleton row"></div>
+        <div class="skeleton row"></div>
+      } @else if (!paged() || paged()!.items.length === 0) {
+        <p class="hint">You're all caught up.</p>
+      } @else {
+        <ul>
+          @for (item of paged()!.items; track item.id) {
+            <li [class.unread]="!item.isRead">
+              <button type="button" (click)="markRead(item)">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.body }}</span>
+                <small>{{ item.createdAtUtc | date: 'MMM d, HH:mm' }}</small>
+              </button>
+            </li>
+          }
+        </ul>
+        @if (paged()!.hasNextPage) {
+          <button type="button" class="btn btn-ghost btn-sm more" (click)="load(paged()!.page + 1)">
+            Load older
+          </button>
+        }
+      }
+    </div>
+  }
+</div>

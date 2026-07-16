@@ -1,0 +1,51 @@
+.epics-grid,
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.epic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+
+    small {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1.02rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    flex: 1;
+  }
+
+  footer {
+    display: flex;
+    gap: 0.5rem;
+    padding-top: 0.35rem;
+  }
+}
+
+.skeleton.card {
+  height: 140px;
+  border-radius: 1rem;
+}

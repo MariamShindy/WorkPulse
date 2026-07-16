@@ -1,0 +1,177 @@
+<section class="page-header">
+  <div>
+    <h1>Settings</h1>
+    <p>Your profile, workspace and team access</p>
+  </div>
+</section>
+
+<nav class="tabs" role="tablist">
+  <button type="button" [class.active]="tab() === 'profile'" (click)="selectTab('profile')">Profile</button>
+  <button type="button" [class.active]="tab() === 'company'" (click)="selectTab('company')">Workspace</button>
+  <button type="button" [class.active]="tab() === 'members'" (click)="selectTab('members')">
+    Members &amp; invites
+  </button>
+</nav>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+@if (success()) {
+  <div class="alert alert-success">{{ success() }}</div>
+}
+
+@switch (tab()) {
+  @case ('profile') {
+    <section class="panel narrow">
+      <h2>Your profile</h2>
+      <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="form-grid">
+        <div class="form-row">
+          <label>
+            <span>First name</span>
+            <input type="text" formControlName="firstName" />
+            @if (profileForm.controls.firstName.touched && profileForm.controls.firstName.invalid) {
+              <span class="field-error">First name is required.</span>
+            }
+          </label>
+          <label>
+            <span>Last name</span>
+            <input type="text" formControlName="lastName" />
+            @if (profileForm.controls.lastName.touched && profileForm.controls.lastName.invalid) {
+              <span class="field-error">Last name is required.</span>
+            }
+          </label>
+        </div>
+        <label>
+          <span>Avatar URL</span>
+          <input type="url" formControlName="avatarUrl" placeholder="https://…" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="savingProfile()">
+            {{ savingProfile() ? 'Saving…' : 'Save profile' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @case ('company') {
+    <section class="panel narrow">
+      <h2>Workspace settings</h2>
+      @if (company(); as c) {
+        <p class="slug">Slug: <code>{{ c.slug }}</code></p>
+      }
+      <form [formGroup]="companyForm" (ngSubmit)="saveCompany()" class="form-grid">
+        <label>
+          <span>Name</span>
+          <input type="text" formControlName="name" />
+          @if (companyForm.controls.name.touched && companyForm.controls.name.invalid) {
+            <span class="field-error">Workspace name is required.</span>
+          }
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea formControlName="description" rows="3"></textarea>
+        </label>
+        <label>
+          <span>Logo URL</span>
+          <input type="url" formControlName="logoUrl" placeholder="https://…" />
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="savingCompany()">
+            {{ savingCompany() ? 'Saving…' : 'Save workspace' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @case ('members') {
+    <section class="panel">
+      <h2>Invite someone</h2>
+      @if (invitationsError()) {
+        <div class="alert alert-error">{{ invitationsError() }}</div>
+      }
+      <form [formGroup]="inviteForm" (ngSubmit)="sendInvite()" class="invite-form">
+        <input type="email" formControlName="email" placeholder="colleague@company.com" />
+        <select formControlName="role">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ role }}</option>
+          }
+        </select>
+        <button type="submit" class="btn btn-primary" [disabled]="inviting()">
+          {{ inviting() ? 'Sending…' : 'Send invite' }}
+        </button>
+      </form>
+
+      @if (invitationList().length > 0) {
+        <h3>Pending invitations</h3>
+        <ul class="invite-list">
+          @for (invitation of invitationList(); track invitation.id) {
+            <li>
+              <div class="invite-info">
+                <strong>{{ invitation.email }}</strong>
+                <small>
+                  {{ invitation.role }} · {{ invitation.status }} ·
+                  expires {{ invitation.expiresAtUtc | date: 'MMM d, y' }}
+                </small>
+              </div>
+              @if (invitation.status === 'Pending') {
+                <button type="button" class="btn btn-ghost btn-sm" (click)="cancelInvite(invitation)">
+                  Cancel
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Members</h2>
+      @if (members(); as m) {
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (member of m.items; track member.id) {
+                <tr>
+                  <td>{{ member.fullName }}</td>
+                  <td>{{ member.email }}</td>
+                  <td>
+                    <select
+                      [value]="member.role"
+                      (change)="updateMember(member, $any($event.target).value)"
+                      aria-label="Member role">
+                      @for (role of roles; track role) {
+                        <option [value]="role">{{ role }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td>
+                    <span class="badge" [class.badge-success]="member.isActive" [class.badge-danger]="!member.isActive">
+                      {{ member.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="toggleMemberActive(member)">
+                      {{ member.isActive ? 'Deactivate' : 'Activate' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-paginator [paged]="m" (pageChange)="loadMembers($event)" />
+      }
+    </section>
+  }
+}

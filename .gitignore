@@ -1,6 +1,8 @@
 ## .NET
 bin/
 obj/
+_recovered/
+tools/Program.cs.backup
 *.user
 *.suo
 *.userprefs
@@ -33,3 +35,9 @@ Thumbs.db
 ## VS Code
 .vscode/
 !.vscode/extensions.json
+
+## Node / Angular
+node_modules/
+dist/
+.angular/
+npm-debug.log*

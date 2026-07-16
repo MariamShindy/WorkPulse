@@ -1,0 +1,174 @@
+<section class="page-header">
+  <div>
+    <h1>Sprints</h1>
+    <p>Timebox work and plan sprint backlogs</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openCreate()">New sprint</button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="filters-bar">
+  <label>
+    <span>Team</span>
+    <select [value]="filterTeamId()" (change)="applyFilter('team', $any($event.target).value)">
+      <option value="">All teams</option>
+      @for (team of teams(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    <span>Status</span>
+    <select [value]="filterStatus()" (change)="applyFilter('status', $any($event.target).value)">
+      <option value="">Any status</option>
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+@if (loading()) {
+  <div class="loading-grid">
+    @for (i of [1, 2, 3]; track i) {
+      <div class="skeleton card"></div>
+    }
+  </div>
+} @else if (!paged() || paged()!.items.length === 0) {
+  <div class="panel">
+    <app-empty-state heading="No sprints found" message="Create a sprint to start timeboxing your team's work." />
+  </div>
+} @else {
+  <div class="sprints-grid">
+    @for (sprint of paged()!.items; track sprint.id) {
+      <article class="sprint-card">
+        <header>
+          <span class="badge" [class]="'badge ' + statusBadgeClass(sprint.status)">{{ sprint.status }}</span>
+          <small>{{ teamName(sprint.teamId) }}</small>
+        </header>
+        <h3>{{ sprint.name }}</h3>
+        <p>{{ sprint.goal || 'No goal set' }}</p>
+        <small class="dates">
+          {{ sprint.startDate | date: 'MMM d' }} → {{ sprint.endDate | date: 'MMM d, y' }}
+        </small>
+        <footer>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openPlanning(sprint)">Plan</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(sprint)">Edit</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(sprint)">Delete</button>
+        </footer>
+      </article>
+    }
+  </div>
+
+  <app-paginator [paged]="paged()" (pageChange)="load($event)" />
+}
+
+<app-modal
+  [open]="modalOpen()"
+  [title]="editingSprint() ? 'Edit sprint' : 'New sprint'"
+  (closed)="modalOpen.set(false)">
+  <form [formGroup]="form" (ngSubmit)="save()" class="form-grid">
+    @if (!editingSprint()) {
+      <label>
+        <span>Team</span>
+        <select formControlName="teamId">
+          @for (team of teams(); track team.id) {
+            <option [value]="team.id">{{ team.name }}</option>
+          }
+        </select>
+      </label>
+    }
+    <label>
+      <span>Name</span>
+      <input type="text" formControlName="name" placeholder="Sprint 12" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <span class="field-error">Name is required.</span>
+      }
+    </label>
+    <label>
+      <span>Goal</span>
+      <textarea formControlName="goal" rows="2"></textarea>
+    </label>
+    <div class="form-row">
+      <label>
+        <span>Start date</span>
+        <input type="date" formControlName="startDate" />
+      </label>
+      <label>
+        <span>End date</span>
+        <input type="date" formControlName="endDate" />
+      </label>
+      <label>
+        <span>Status</span>
+        <select formControlName="status">
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ status }}</option>
+          }
+        </select>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : editingSprint() ? 'Save changes' : 'Create sprint' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-drawer
+  [open]="planningSprint() !== null"
+  [title]="'Plan: ' + (planningSprint()?.name ?? '')"
+  (closed)="planningSprint.set(null)">
+  @if (planningLoading()) {
+    <div class="skeleton block"></div>
+  } @else {
+    <section class="plan-section">
+      <h3>In sprint <span class="badge badge-accent">{{ sprintTasks().length }}</span></h3>
+      @if (sprintTasks().length === 0) {
+        <p class="empty">No tasks assigned yet.</p>
+      } @else {
+        <ul class="plan-list">
+          @for (task of sprintTasks(); track task.id) {
+            <li>
+              <span class="identifier">{{ task.identifier }}</span>
+              <span class="title">{{ task.title }}</span>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="removeFromSprint(task)">
+                Remove
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="plan-section">
+      <h3>Backlog <span class="badge">{{ backlogTasks().length }}</span></h3>
+      @if (backlogTasks().length === 0) {
+        <p class="empty">Backlog is empty.</p>
+      } @else {
+        <ul class="plan-list">
+          @for (task of backlogTasks(); track task.id) {
+            <li>
+              <span class="identifier">{{ task.identifier }}</span>
+              <span class="title">{{ task.title }}</span>
+              <button type="button" class="btn btn-primary btn-sm" (click)="assignToSprint(task)">
+                Add
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</app-drawer>
+
+<app-confirm-dialog
+  [open]="deleteTarget() !== null"
+  title="Delete sprint?"
+  [message]="'Delete “' + (deleteTarget()?.name ?? '') + '”? Tasks return to the backlog.'"
+  (confirmed)="deleteSprint()"
+  (cancelled)="deleteTarget.set(null)" />

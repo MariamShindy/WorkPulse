@@ -1,28 +1,26 @@
+using System.Reflection;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using WorkPulse.Application.Behaviors;
-using WorkPulse.Application.Common.Result;
+using WorkPulse.Application.Collaboration.Services;
 
 namespace WorkPulse.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
-    {
-        var assembly = typeof(DependencyInjection).Assembly;
-
-        services.AddMediatR(cfg =>
-        {
-            cfg.RegisterServicesFromAssembly(assembly);
-            cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
-            cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-        });
-
-        services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
-
-        services.AddAutoMapper(assembly);
-
-        return services;
-    }
+	public static IServiceCollection AddApplication(this IServiceCollection services)
+	{
+		Assembly assembly = typeof(DependencyInjection).Assembly;
+		services.AddMediatR(delegate(MediatRServiceConfiguration cfg)
+		{
+			cfg.RegisterServicesFromAssembly(assembly);
+			cfg.AddOpenBehavior(typeof(LoggingBehavior<, >));
+			cfg.AddOpenBehavior(typeof(ValidationBehavior<, >));
+			cfg.AddOpenBehavior(typeof(TransactionBehavior<, >));
+		});
+		services.AddValidatorsFromAssembly(assembly, ServiceLifetime.Scoped, null, includeInternalTypes: true);
+		services.AddAutoMapper(assembly);
+		services.AddScoped<ITaskCollaborationService, TaskCollaborationService>();
+		return services;
+	}
 }

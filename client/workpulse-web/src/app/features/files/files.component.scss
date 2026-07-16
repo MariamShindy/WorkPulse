@@ -1,0 +1,44 @@
+.entity-select {
+  flex: 2 !important;
+  max-width: 420px !important;
+}
+
+.upload-label {
+  min-width: auto !important;
+  flex: 0 !important;
+
+  .btn {
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+
+    &.disabled {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+  }
+}
+
+.name-cell {
+  font-weight: 600;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.skeleton.block {
+  height: 240px;
+  border-radius: 1rem;
+}

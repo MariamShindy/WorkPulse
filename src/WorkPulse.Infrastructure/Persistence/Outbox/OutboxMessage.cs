@@ -1,12 +1,20 @@
+using System;
+
 namespace WorkPulse.Infrastructure.Persistence.Outbox;
 
 public sealed class OutboxMessage
 {
-    public Guid Id { get; init; } = Guid.NewGuid();
-    public string Type { get; init; } = string.Empty;
-    public string Content { get; init; } = string.Empty;
-    public DateTime OccurredOnUtc { get; init; }
-    public DateTime? ProcessedOnUtc { get; set; }
-    public string? Error { get; set; }
-    public int RetryCount { get; set; }
+	public Guid Id { get; set; }
+
+	public string EventType { get; set; } = string.Empty;
+
+	public string Payload { get; set; } = string.Empty;
+
+	public DateTime CreatedAtUtc { get; set; }
+
+	public DateTime? ProcessedAtUtc { get; set; }
+
+	public string? Error { get; set; }
+
+	public int RetryCount { get; set; }
 }

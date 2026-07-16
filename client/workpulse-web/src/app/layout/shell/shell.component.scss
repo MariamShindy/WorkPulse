@@ -1,0 +1,338 @@
+/* ── Shell grid ─────────────────────────────────────────────────────────── */
+
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  background: var(--bg-app);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sidebar);
+  overflow-y: auto;
+  max-height: 100vh;
+  position: sticky;
+  top: 0;
+
+  /* subtle top-fade to indicate more content above */
+  mask-image: linear-gradient(to bottom, transparent 0, #000 0.5rem, #000 calc(100% - 1rem), transparent 100%);
+}
+
+/* ── Logo / Workspace header ─────────────────────────────────────────────── */
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.5rem 0.85rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: var(--text-on-accent);
+  font-weight: 800;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--accent-soft), 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.workspace {
+  display: grid;
+  line-height: 1.25;
+  min-width: 0;
+
+  strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  small {
+    color: var(--text-subtle);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+
+.sidebar-nav {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1;
+  align-content: start;
+  padding-top: 0.25rem;
+}
+
+.nav-section {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 0.35rem;
+}
+
+.nav-section-title {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  padding: 0.6rem 0.6rem 0.3rem;
+}
+
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.42rem 0.6rem;
+  border-radius: var(--r-md, 0.65rem);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition:
+    background var(--transition-fast, 100ms),
+    color var(--transition-fast, 100ms),
+    box-shadow var(--transition-fast, 100ms);
+  position: relative;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+
+  /* Linear-style: accent left-bar + tinted bg when active */
+  &.active {
+    background: var(--bg-active);
+    color: var(--accent);
+    font-weight: 600;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 60%;
+      border-radius: 0 2px 2px 0;
+      background: var(--accent);
+    }
+  }
+}
+
+.icon {
+  opacity: 0.8;
+  width: 1rem;
+  text-align: center;
+  flex-shrink: 0;
+  font-style: normal;
+  line-height: 1;
+}
+
+.sidebar-nav a.active .icon { opacity: 1; }
+
+/* ── Sidebar footer ──────────────────────────────────────────────────────── */
+
+.sidebar-footer {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--r-md, 0.65rem);
+  transition: background var(--transition-fast, 100ms);
+  cursor: default;
+  min-width: 0;
+
+  &:hover { background: var(--bg-hover); }
+
+  > div { min-width: 0; }
+
+  strong {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+
+  small {
+    color: var(--text-subtle);
+    font-size: 0.7rem;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: var(--r-full, 999px);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+}
+
+.footer-actions {
+  display: flex;
+  gap: 0.4rem;
+
+  .btn {
+    flex: 1;
+    font-size: 0.78rem;
+    padding: 0.38rem 0.6rem;
+  }
+}
+
+/* ── Main area ───────────────────────────────────────────────────────────── */
+
+.main {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+}
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1.25rem;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-sidebar) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 0.5rem);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast, 100ms), color var(--transition-fast, 100ms);
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
+  }
+}
+
+/* ── Content ─────────────────────────────────────────────────────────────── */
+
+.content {
+  padding: 1.5rem;
+  overflow: auto;
+  min-width: 0;
+}
+
+/* ── Mobile backdrop ─────────────────────────────────────────────────────── */
+
+.backdrop { display: none; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-btn {
+    display: inline-flex;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(82vw, 265px);
+    z-index: 50;
+    transform: translateX(-106%);
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-lg);
+    /* Remove fade mask on mobile since it clips the shadow */
+    mask-image: none;
+  }
+
+  .shell.nav-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--backdrop);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    z-index: 45;
+  }
+
+  .shell.nav-open .backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 0 0.75rem;
+  }
+
+  .content {
+    padding: 0.75rem;
+  }
+}

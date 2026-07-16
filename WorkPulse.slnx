@@ -6,6 +6,7 @@
     <Project Path="src/WorkPulse.Infrastructure/WorkPulse.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/WorkPulse.API.Tests/WorkPulse.API.Tests.csproj" />
     <Project Path="tests/WorkPulse.Application.Tests/WorkPulse.Application.Tests.csproj" />
     <Project Path="tests/WorkPulse.Domain.Tests/WorkPulse.Domain.Tests.csproj" />
     <Project Path="tests/WorkPulse.Infrastructure.Tests/WorkPulse.Infrastructure.Tests.csproj" />

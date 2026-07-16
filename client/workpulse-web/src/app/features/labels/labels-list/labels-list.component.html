@@ -1,0 +1,68 @@
+<section class="page-header">
+  <div>
+    <h1>Labels</h1>
+    <p>Color-coded tags for organizing tasks</p>
+  </div>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<section class="panel create-panel">
+  <h2>New label</h2>
+  <form [formGroup]="createForm" (ngSubmit)="create()" class="create-form">
+    <input type="text" formControlName="name" placeholder="Label name (e.g. bug)" />
+    <input type="color" formControlName="color" aria-label="Label color" />
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      {{ saving() ? 'Creating…' : 'Create label' }}
+    </button>
+  </form>
+  @if (createForm.controls.name.touched && createForm.controls.name.invalid) {
+    <span class="field-error">Label name is required.</span>
+  }
+</section>
+
+<section class="panel">
+  <h2>All labels</h2>
+
+  @if (loading()) {
+    <div class="skeleton row"></div>
+    <div class="skeleton row"></div>
+  } @else if (labels().length === 0) {
+    <app-empty-state heading="No labels yet" message="Create labels above and attach them to tasks on the board." />
+  } @else {
+    <ul class="label-list">
+      @for (label of labels(); track label.id) {
+        <li>
+          @if (editingId() === label.id) {
+            <form [formGroup]="editForm" (ngSubmit)="saveEdit()" class="edit-form">
+              <input type="text" formControlName="name" />
+              <input type="color" formControlName="color" aria-label="Label color" />
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="editingId.set(null)">Cancel</button>
+            </form>
+          } @else {
+            <span class="swatch" [style.background]="label.color"></span>
+            <span
+              class="label-pill"
+              [style.color]="label.color"
+              [style.border-color]="label.color">
+              {{ label.name }}
+            </span>
+            <span class="spacer"></span>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="startEdit(label)">Edit</button>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(label)">Delete</button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>
+
+<app-confirm-dialog
+  [open]="deleteTarget() !== null"
+  title="Delete label?"
+  [message]="'Delete “' + (deleteTarget()?.name ?? '') + '”? It will be removed from all tasks.'"
+  (confirmed)="deleteLabel()"
+  (cancelled)="deleteTarget.set(null)" />

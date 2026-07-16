@@ -1,51 +1,44 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentValidation;
+using FluentValidation.Results;
 using MediatR;
 using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Behaviors;
 
-public sealed class ValidationBehavior<TRequest, TResponse>(
-    IEnumerable<IValidator<TRequest>> validators)
-    : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
-    where TResponse : Result
+public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators) : IPipelineBehavior<TRequest, TResponse> where TRequest : IRequest<TResponse> where TResponse : Result
 {
-    public async Task<TResponse> Handle(
-        TRequest request,
-        RequestHandlerDelegate<TResponse> next,
-        CancellationToken ct)
-    {
-        if (!validators.Any()) return await next(ct);
+	public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
+	{
+		if (!Enumerable.Any(validators))
+		{
+			return await next(ct);
+		}
+		ValidationContext<TRequest> context = new ValidationContext<TRequest>(request);
+		List<ValidationFailure> failures = (from f in validators.Select((IValidator<TRequest> v) => v.Validate(context)).SelectMany((ValidationResult r) => r.Errors)
+			where f != null
+			select f).ToList();
+		if (failures.Count == 0)
+		{
+			return await next(ct);
+		}
+		List<Error> errors = failures.Select((ValidationFailure f) => Error.Validation(f.PropertyName, f.ErrorMessage)).ToList();
+		return CreateValidationResult<TResponse>(errors);
+	}
 
-        var context = new ValidationContext<TRequest>(request);
-        var failures = validators
-            .Select(v => v.Validate(context))
-            .SelectMany(r => r.Errors)
-            .Where(f => f is not null)
-            .ToList();
-
-        if (failures.Count == 0) return await next(ct);
-
-        var errors = failures
-            .Select(f => Error.Validation(f.PropertyName, f.ErrorMessage))
-            .ToList();
-
-        // Return the first validation error; callers can inspect all via the exception if needed
-        return CreateValidationResult<TResponse>(errors);
-    }
-
-    private static TResult CreateValidationResult<TResult>(List<Error> errors)
-        where TResult : Result
-    {
-        if (typeof(TResult) == typeof(Result))
-            return (TResult)(object)Result.Failure(errors.First());
-
-        var resultType = typeof(TResult).GetGenericArguments()[0];
-        var failureMethod = typeof(Result)
-            .GetMethods()
-            .First(m => m.Name == nameof(Result.Failure) && m.IsGenericMethod)
-            .MakeGenericMethod(resultType);
-
-        return (TResult)failureMethod.Invoke(null, [errors.First()])!;
-    }
+	private static TResult CreateValidationResult<TResult>(List<Error> errors) where TResult : Result
+	{
+		if (typeof(TResult) == typeof(Result))
+		{
+			return (TResult)Result.Failure(errors.First());
+		}
+		Type type = typeof(TResult).GetGenericArguments()[0];
+		MethodInfo methodInfo = typeof(Result).GetMethods().First((MethodInfo m) => m.Name == "Failure" && m.IsGenericMethod).MakeGenericMethod(type);
+		return (TResult)methodInfo.Invoke(null, new object[1] { errors.First() });
+	}
 }

@@ -1,12 +1,22 @@
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
 using System.Text;
+using WorkPulse.API.Authorization;
+using WorkPulse.API.Hubs;
 using WorkPulse.API.Middleware;
+using WorkPulse.API.Services;
 using WorkPulse.Application;
+using WorkPulse.Application.Abstractions;
+using WorkPulse.Domain.Enums;
 using WorkPulse.Infrastructure;
+using WorkPulse.Infrastructure.Extensions;
+using WorkPulse.Infrastructure.Persistence;
+using WorkPulse.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +30,7 @@ builder.Host.UseSerilog((ctx, lc) => lc
 
 // ── Application + Infrastructure ─────────────────────────────────────────────
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // ── Authentication / JWT ─────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -61,11 +71,30 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.RequireAuthenticated, policy =>
+        policy.RequireAuthenticatedUser());
+
+    options.AddPolicy(AuthorizationPolicies.RequireCompanyAdmin, policy =>
+        policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new CompanyRoleRequirement(
+                CompanyMemberRole.Admin,
+                CompanyMemberRole.Owner)));
+
+    options.AddPolicy(AuthorizationPolicies.RequireCompanyOwner, policy =>
+        policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new CompanyRoleRequirement(CompanyMemberRole.Owner)));
+});
+
+builder.Services.AddScoped<IAuthorizationHandler, CompanyRoleAuthorizationHandler>();
 
 // ── API infrastructure ────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+builder.Services.AddScoped<ITaskRealtimeNotifier, RealtimeNotifier>();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();
@@ -75,10 +104,17 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // ── Health checks ─────────────────────────────────────────────────────────────
-builder.Services
-    .AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres")
-    .AddRedis(builder.Configuration.GetConnectionString("Redis")!, name: "redis");
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHealthChecks();
+}
+else
+{
+    builder.Services
+        .AddHealthChecks()
+        .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "postgres")
+        .AddRedis(builder.Configuration.GetConnectionString("Redis")!, name: "redis");
+}
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
@@ -96,6 +132,14 @@ builder.Services.AddCors(options =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+    await scope.ServiceProvider.SeedDevelopmentDataAsync();
+}
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
@@ -117,14 +161,20 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<TenantResolutionMiddleware>();
 
 app.UseAuthentication();
+app.UseMiddleware<TenantMembershipMiddleware>();
 app.UseAuthorization();
 
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    Authorization = [] // TODO: add auth filter before production
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = [] // TODO: add auth filter before production
+    });
+    app.Services.ScheduleRecurringJobs();
+}
 
 app.MapControllers();
+app.MapHub<WorkPulseHub>("/hubs/workpulse");
 app.MapHealthChecks("/health");
 
 app.Run();

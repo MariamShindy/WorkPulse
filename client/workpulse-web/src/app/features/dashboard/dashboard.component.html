@@ -1,0 +1,145 @@
+<section class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p>Overview of your workspace activity</p>
+  </div>
+  <div class="header-actions">
+    <select
+      aria-label="Filter by team"
+      [value]="selectedTeamId() ?? ''"
+      (change)="selectTeam($any($event.target).value)">
+      <option value="">All teams</option>
+      @for (team of teams(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
+      }
+    </select>
+    <a routerLink="/board" class="btn btn-primary">Open board</a>
+  </div>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="loading-grid">
+    @for (i of [1, 2, 3, 4, 5]; track i) {
+      <div class="skeleton card"></div>
+    }
+  </div>
+} @else {
+  @if (data(); as d) {
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="label">Total tasks</span>
+      <strong>{{ d.totalTasks }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="label">Open</span>
+      <strong>{{ d.openTasks }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="label">Completed</span>
+      <strong>{{ d.completedTasks }}</strong>
+    </article>
+    <article class="stat-card" [class.attention]="d.overdueTasks > 0">
+      <span class="label">Overdue</span>
+      <strong>{{ d.overdueTasks }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="label">Unassigned</span>
+      <strong>{{ d.unassignedTasks }}</strong>
+    </article>
+    <article class="stat-card">
+      <span class="label">Avg. cycle time</span>
+      <strong>{{ d.averageCycleTimeDays | number: '1.0-1' }}<small>days</small></strong>
+    </article>
+  </div>
+
+  <div class="charts-grid">
+    <section class="panel">
+      <h2>Tasks by status</h2>
+      @if (d.tasksByStatus.length === 0) {
+        <p class="empty">No tasks yet.</p>
+      } @else {
+        <ul class="bar-list">
+          @for (row of d.tasksByStatus; track row.statusName) {
+            <li>
+              <span class="bar-label">{{ row.statusName }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="(row.count / maxStatusCount()) * 100"></div>
+              </div>
+              <span class="bar-value">{{ row.count }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Tasks by priority</h2>
+      @if (d.tasksByPriority.length === 0) {
+        <p class="empty">No tasks yet.</p>
+      } @else {
+        <ul class="bar-list">
+          @for (row of d.tasksByPriority; track row.priority) {
+            <li>
+              <span class="bar-label">{{ row.priority }}</span>
+              <div class="bar-track">
+                <div class="bar-fill warm" [style.width.%]="(row.count / maxPriorityCount()) * 100"></div>
+              </div>
+              <span class="bar-value">{{ row.count }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Velocity <small>created vs completed / week</small></h2>
+      @if (velocity().length === 0) {
+        <p class="empty">Not enough data yet.</p>
+      } @else {
+        <div class="velocity-chart">
+          @for (point of velocity(); track point.weekStart) {
+            <div class="week" [title]="point.weekStart">
+              <div class="cols">
+                <div class="col created" [style.height.%]="(point.created / maxVelocity()) * 100"></div>
+                <div class="col completed" [style.height.%]="(point.completed / maxVelocity()) * 100"></div>
+              </div>
+              <small>{{ point.weekStart | date: 'MMM d' }}</small>
+            </div>
+          }
+        </div>
+        <div class="legend">
+          <span><i class="dot created"></i> Created</span>
+          <span><i class="dot completed"></i> Completed</span>
+        </div>
+      }
+    </section>
+
+    <section class="panel">
+      <h2>Project progress</h2>
+      @if (projectProgress().length === 0) {
+        <p class="empty">No projects yet. <a routerLink="/projects" class="link">Create one</a>.</p>
+      } @else {
+        <ul class="progress-list">
+          @for (project of projectProgress(); track project.projectId) {
+            <li>
+              <div class="progress-head">
+                <span class="badge badge-accent">{{ project.projectKey }}</span>
+                <strong>{{ project.projectName }}</strong>
+                <span class="pct">{{ project.completionRate * 100 | number: '1.0-0' }}%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill success" [style.width.%]="project.completionRate * 100"></div>
+              </div>
+              <small>{{ project.completedTasks }} / {{ project.totalTasks }} tasks done</small>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+  }
+}

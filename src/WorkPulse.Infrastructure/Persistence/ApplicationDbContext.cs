@@ -1,95 +1,148 @@
+using System;
+using System.Linq;
+using System.Reflection;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using WorkPulse.Application.Abstractions;
+using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Domain.Common;
+using WorkPulse.Domain.Entities;
 using WorkPulse.Infrastructure.Persistence.Interceptors;
 using WorkPulse.Infrastructure.Persistence.Outbox;
 
 namespace WorkPulse.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext(
-    DbContextOptions<ApplicationDbContext> options,
-    ITenantContext tenantContext,
-    AuditableEntityInterceptor auditableInterceptor,
-    DomainEventOutboxInterceptor outboxInterceptor)
-    : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
+public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ITenantContext tenantContext, AuditableEntityInterceptor auditableInterceptor, AuditLogInterceptor auditLogInterceptor) : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>((DbContextOptions)options), IApplicationDbContext
 {
-    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+	private Guid _currentTenantId;
 
-    protected override void OnModelCreating(ModelBuilder builder)
-    {
-        base.OnModelCreating(builder);
-        builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
-        ApplyGlobalFilters(builder);
-        ApplySnakeCaseNaming(builder);
-    }
+	public void SetCurrentTenant(Guid tenantId) => _currentTenantId = tenantId;
+	public DbSet<Company> Companies => Set<Company>();
 
-    private static void ApplySnakeCaseNaming(ModelBuilder builder)
-    {
-        foreach (var entity in builder.Model.GetEntityTypes())
-        {
-            var tableName = entity.GetTableName();
-            if (tableName is not null)
-                entity.SetTableName(ToSnakeCase(tableName));
+	public DbSet<CompanyMember> CompanyMembers => Set<CompanyMember>();
 
-            foreach (var property in entity.GetProperties())
-                property.SetColumnName(ToSnakeCase(property.GetColumnName()));
+	public DbSet<Team> Teams => Set<Team>();
 
-            foreach (var key in entity.GetKeys())
-                key.SetName(ToSnakeCase(key.GetName()!));
+	public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
 
-            foreach (var fk in entity.GetForeignKeys())
-                fk.SetConstraintName(ToSnakeCase(fk.GetConstraintName()!));
+	public DbSet<Workflow> Workflows => Set<Workflow>();
 
-            foreach (var index in entity.GetIndexes())
-                index.SetDatabaseName(ToSnakeCase(index.GetDatabaseName()!));
-        }
-    }
+	public DbSet<WorkflowState> WorkflowStates => Set<WorkflowState>();
 
-    private static string ToSnakeCase(string name) =>
-        string.Concat(name.Select((c, i) =>
-            i > 0 && char.IsUpper(c) ? "_" + c : c.ToString())).ToLower();
+	public DbSet<Project> Projects => Set<Project>();
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder
-            .AddInterceptors(auditableInterceptor, outboxInterceptor);
-    }
+	public DbSet<TaskItem> TaskItems => Set<TaskItem>();
 
-    private void ApplyGlobalFilters(ModelBuilder builder)
-    {
-        foreach (var entityType in builder.Model.GetEntityTypes())
-        {
-            var clrType = entityType.ClrType;
+	public DbSet<Label> Labels => Set<Label>();
 
-            if (typeof(ITenantEntity).IsAssignableFrom(clrType))
-            {
-                var tenantId = tenantContext.TenantId;
-                var method = typeof(ApplicationDbContext)
-                    .GetMethod(nameof(SetTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-                    .MakeGenericMethod(clrType);
-                method.Invoke(null, [builder, tenantId]);
-            }
+	public DbSet<TaskLabel> TaskLabels => Set<TaskLabel>();
 
-            if (typeof(ISoftDeletable).IsAssignableFrom(clrType))
-            {
-                var method = typeof(ApplicationDbContext)
-                    .GetMethod(nameof(SetSoftDeleteFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-                    .MakeGenericMethod(clrType);
-                method.Invoke(null, [builder]);
-            }
-        }
-    }
+	public DbSet<Epic> Epics => Set<Epic>();
 
-    private static void SetTenantFilter<TEntity>(ModelBuilder builder, Guid tenantId)
-        where TEntity : class, ITenantEntity
-    {
-        builder.Entity<TEntity>().HasQueryFilter(e => e.TenantId == tenantId);
-    }
+	public DbSet<Sprint> Sprints => Set<Sprint>();
 
-    private static void SetSoftDeleteFilter<TEntity>(ModelBuilder builder)
-        where TEntity : class, ISoftDeletable
-    {
-        builder.Entity<TEntity>().HasQueryFilter(e => !e.IsDeleted);
-    }
+	public DbSet<TaskAssignee> TaskAssignees => Set<TaskAssignee>();
+
+	public DbSet<TaskDependency> TaskDependencies => Set<TaskDependency>();
+
+	public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
+
+	public DbSet<SavedView> SavedViews => Set<SavedView>();
+
+	public DbSet<TeamIssueCounter> TeamIssueCounters => Set<TeamIssueCounter>();
+
+	public DbSet<TaskComment> TaskComments => Set<TaskComment>();
+
+	public DbSet<TaskWatcher> TaskWatchers => Set<TaskWatcher>();
+
+	public DbSet<TaskActivity> TaskActivities => Set<TaskActivity>();
+
+	public DbSet<Notification> Notifications => Set<Notification>();
+
+	public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+
+	public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+	public DbSet<UserInvitation> UserInvitations => Set<UserInvitation>();
+
+	public DbSet<AutomationRule> AutomationRules => Set<AutomationRule>();
+
+	public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+
+	public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+	protected override void OnModelCreating(ModelBuilder builder)
+	{
+		base.OnModelCreating(builder);
+		builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+		ApplyGlobalFilters(builder);
+		ApplySnakeCaseNaming(builder);
+	}
+
+	private static void ApplySnakeCaseNaming(ModelBuilder builder)
+	{
+		foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
+		{
+			string tableName = entityType.GetTableName();
+			if (tableName != null)
+			{
+				entityType.SetTableName(ToSnakeCase(tableName));
+			}
+			foreach (IMutableProperty property in entityType.GetProperties())
+			{
+				property.SetColumnName(ToSnakeCase(property.GetColumnName()));
+			}
+			foreach (IMutableKey key in entityType.GetKeys())
+			{
+				key.SetName(ToSnakeCase(key.GetName()));
+			}
+			foreach (IMutableForeignKey foreignKey in entityType.GetForeignKeys())
+			{
+				foreignKey.SetConstraintName(ToSnakeCase(foreignKey.GetConstraintName()));
+			}
+			foreach (IMutableIndex index in entityType.GetIndexes())
+			{
+				index.SetDatabaseName(ToSnakeCase(index.GetDatabaseName()));
+			}
+		}
+	}
+
+	private static string ToSnakeCase(string name)
+	{
+		return string.Concat(name.Select((char c, int i) => (i > 0 && char.IsUpper(c)) ? ("_" + c) : c.ToString())).ToLower();
+	}
+
+	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+	{
+		optionsBuilder.AddInterceptors(auditableInterceptor, auditLogInterceptor);
+	}
+
+	private void ApplyGlobalFilters(ModelBuilder builder)
+	{
+		foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
+		{
+			Type clrType = entityType.ClrType;
+			if (typeof(ITenantEntity).IsAssignableFrom(clrType))
+			{
+				MethodInfo methodInfo = typeof(ApplicationDbContext).GetMethod("SetTenantFilter", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(clrType);
+				methodInfo.Invoke(this, new object[1] { builder });
+			}
+			if (typeof(ISoftDeletable).IsAssignableFrom(clrType))
+			{
+				MethodInfo methodInfo2 = typeof(ApplicationDbContext).GetMethod("SetSoftDeleteFilter", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(clrType);
+				methodInfo2.Invoke(null, new object[1] { builder });
+			}
+		}
+	}
+
+	private void SetTenantFilter<TEntity>(ModelBuilder builder) where TEntity : class, ITenantEntity
+	{
+		builder.Entity<TEntity>().HasQueryFilter((TEntity e) => e.TenantId == _currentTenantId);
+	}
+
+	private static void SetSoftDeleteFilter<TEntity>(ModelBuilder builder) where TEntity : class, ISoftDeletable
+	{
+		builder.Entity<TEntity>().HasQueryFilter((TEntity e) => !e.IsDeleted);
+	}
 }

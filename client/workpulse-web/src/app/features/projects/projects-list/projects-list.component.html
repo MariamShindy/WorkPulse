@@ -1,0 +1,155 @@
+<section class="page-header">
+  <div>
+    <h1>Projects</h1>
+    <p>Plan and track initiatives across teams</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openCreate()">New project</button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="filters-bar">
+  <label>
+    <span>Team</span>
+    <select [value]="filterTeamId()" (change)="applyFilter('team', $any($event.target).value)">
+      <option value="">All teams</option>
+      @for (team of teams(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    <span>Status</span>
+    <select [value]="filterStatus()" (change)="applyFilter('status', $any($event.target).value)">
+      <option value="">Any status</option>
+      @for (status of statuses; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+  </label>
+  <label class="check-label">
+    <span>&nbsp;</span>
+    <span class="check-inner">
+      <input
+        type="checkbox"
+        [checked]="includeArchived()"
+        (change)="applyFilter('archived', $any($event.target).checked)" />
+      Show archived
+    </span>
+  </label>
+</div>
+
+@if (loading()) {
+  <div class="loading-grid">
+    @for (i of [1, 2, 3]; track i) {
+      <div class="skeleton card"></div>
+    }
+  </div>
+} @else if (!paged() || paged()!.items.length === 0) {
+  <div class="panel">
+    <app-empty-state
+      heading="No projects found"
+      message="Create a project to group related tasks and track progress." />
+  </div>
+} @else {
+  <div class="projects-grid">
+    @for (project of paged()!.items; track project.id) {
+      <article class="project-card" [class.archived]="project.isArchived">
+        <header>
+          <span class="badge badge-accent">{{ project.key }}</span>
+          <span class="badge" [class]="'badge ' + statusBadgeClass(project.status)">{{ project.status }}</span>
+          @if (project.isArchived) {
+            <span class="badge">Archived</span>
+          }
+        </header>
+        <h3>{{ project.name }}</h3>
+        <p>{{ project.description || 'No description' }}</p>
+        <div class="meta">
+          <small>{{ teamName(project.teamId) }}</small>
+          @if (project.targetDate) {
+            <small>Target: {{ project.targetDate | date: 'MMM d, y' }}</small>
+          }
+        </div>
+        <footer>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(project)">Edit</button>
+          @if (!project.isArchived) {
+            <button type="button" class="btn btn-ghost btn-sm" (click)="archiveTarget.set(project)">
+              Archive
+            </button>
+          }
+        </footer>
+      </article>
+    }
+  </div>
+
+  <app-paginator [paged]="paged()" (pageChange)="load($event)" />
+}
+
+<app-modal
+  [open]="modalOpen()"
+  [title]="editingProject() ? 'Edit project' : 'New project'"
+  (closed)="modalOpen.set(false)">
+  <form [formGroup]="form" (ngSubmit)="save()" class="form-grid">
+    @if (!editingProject()) {
+      <label>
+        <span>Team</span>
+        <select formControlName="teamId">
+          @for (team of teams(); track team.id) {
+            <option [value]="team.id">{{ team.name }}</option>
+          }
+        </select>
+      </label>
+    }
+    <label>
+      <span>Name</span>
+      <input type="text" formControlName="name" placeholder="Website redesign" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <span class="field-error">Name is required.</span>
+      }
+    </label>
+    @if (!editingProject()) {
+      <label>
+        <span>Key (optional)</span>
+        <input type="text" formControlName="key" placeholder="WEB" maxlength="8" />
+      </label>
+    }
+    <label>
+      <span>Description</span>
+      <textarea formControlName="description" rows="2"></textarea>
+    </label>
+    <div class="form-row">
+      <label>
+        <span>Status</span>
+        <select formControlName="status">
+          @for (status of statuses; track status) {
+            <option [value]="status">{{ status }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Start date</span>
+        <input type="date" formControlName="startDate" />
+      </label>
+      <label>
+        <span>Target date</span>
+        <input type="date" formControlName="targetDate" />
+      </label>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : editingProject() ? 'Save changes' : 'Create project' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-confirm-dialog
+  [open]="archiveTarget() !== null"
+  title="Archive project?"
+  [message]="'Archive “' + (archiveTarget()?.name ?? '') + '”? Its tasks remain accessible.'"
+  confirmLabel="Archive"
+  (confirmed)="archive()"
+  (cancelled)="archiveTarget.set(null)" />

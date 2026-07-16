@@ -8,44 +8,54 @@ using WorkPulse.Infrastructure.Persistence;
 namespace WorkPulse.Infrastructure.Jobs;
 
 public sealed class OutboxProcessorJob(
-    ApplicationDbContext context,
+    ApplicationDbContext db,
     IPublisher publisher,
     ILogger<OutboxProcessorJob> logger)
 {
-    private const int BatchSize = 20;
+    private const int BatchSize = 50;
 
     public async Task ProcessAsync(CancellationToken ct = default)
     {
-        var messages = await context.OutboxMessages
-            .Where(m => m.ProcessedOnUtc == null && m.RetryCount < 5)
-            .OrderBy(m => m.OccurredOnUtc)
+        var batch = await db.OutboxMessages
+            .Where(m => m.ProcessedAtUtc == null && m.RetryCount < 5)
+            .OrderBy(m => m.CreatedAtUtc)
             .Take(BatchSize)
             .ToListAsync(ct);
 
-        foreach (var message in messages)
+        if (batch.Count == 0) return;
+
+        foreach (var message in batch)
         {
             try
             {
-                var eventType = Type.GetType(message.Type);
+                var eventType = Type.GetType(message.EventType);
                 if (eventType is null)
                 {
-                    logger.LogWarning("Unknown outbox message type: {Type}", message.Type);
+                    logger.LogWarning(
+                        "Unknown outbox message type {EventType} for message {MessageId} — skipping",
+                        message.EventType, message.Id);
+                    message.ProcessedAtUtc = DateTime.UtcNow;
                     continue;
                 }
 
-                var domainEvent = (IDomainEvent)JsonSerializer.Deserialize(message.Content, eventType)!;
+                var domainEvent = (IDomainEvent)JsonSerializer.Deserialize(message.Payload, eventType)!;
                 await publisher.Publish(domainEvent, ct);
 
-                message.ProcessedOnUtc = DateTime.UtcNow;
+                message.ProcessedAtUtc = DateTime.UtcNow;
+                message.Error = null;
+
+                logger.LogInformation(
+                    "Published outbox message {MessageId} of type {EventType}",
+                    message.Id, message.EventType);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to process outbox message {MessageId}", message.Id);
                 message.RetryCount++;
                 message.Error = ex.Message;
+                logger.LogError(ex, "Failed to process outbox message {MessageId}", message.Id);
             }
         }
 
-        await context.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
     }
 }

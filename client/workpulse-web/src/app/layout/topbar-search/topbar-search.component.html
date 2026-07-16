@@ -1,0 +1,39 @@
+<div class="search-wrap">
+  <input
+    #searchInput
+    type="search"
+    class="search-input"
+    placeholder="Search tasks, projects, teams…"
+    aria-label="Global search"
+    (input)="onInput($any($event.target).value)"
+    (focus)="onInput($any($event.target).value)"
+    (keydown.escape)="close()" />
+
+  @if (open()) {
+    <div class="results-backdrop" (click)="close()" aria-hidden="true"></div>
+    <div class="results-panel">
+      @if (searching()) {
+        <p class="hint">Searching…</p>
+      } @else if (results().length === 0) {
+        <p class="hint">No results found.</p>
+      } @else {
+        <ul>
+          @for (result of results(); track result.id + result.entityType) {
+            <li>
+              <button type="button" (click)="select(result)">
+                <span class="type-icon">{{ typeIcon(result.entityType) }}</span>
+                <span class="result-text">
+                  <strong>{{ result.title }}</strong>
+                  @if (result.subtitle) {
+                    <small>{{ result.subtitle }}</small>
+                  }
+                </span>
+                <span class="badge">{{ result.entityType }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+</div>

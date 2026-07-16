@@ -1,0 +1,81 @@
+<section class="page-header">
+  <div>
+    <h1>Audit logs</h1>
+    <p>Every change in the workspace, recorded</p>
+  </div>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="filters-bar">
+  <label>
+    <span>Entity type</span>
+    <select [value]="filterEntityType()" (change)="setFilter('entityType', $any($event.target).value)">
+      <option value="">All types</option>
+      @for (type of entityTypes; track type) {
+        <option [value]="type">{{ type }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    <span>User</span>
+    <select [value]="filterUserId()" (change)="setFilter('userId', $any($event.target).value)">
+      <option value="">All users</option>
+      @for (member of members(); track member.userId) {
+        <option [value]="member.userId">{{ member.fullName }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+@if (loading()) {
+  <div class="skeleton block"></div>
+} @else if (!paged() || paged()!.items.length === 0) {
+  <div class="panel">
+    <app-empty-state heading="No audit entries" message="Actions will appear here as your team works." />
+  </div>
+} @else {
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Entity</th>
+          <th>Changes</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of paged()!.items; track entry.id) {
+          <tr>
+            <td>{{ entry.timestamp | date: 'MMM d, y HH:mm:ss' }}</td>
+            <td>{{ userName(entry.userId) }}</td>
+            <td><span class="badge badge-accent">{{ entry.action }}</span></td>
+            <td>{{ entry.entityType }} <small class="id-hint">{{ entry.entityId.slice(0, 8) }}</small></td>
+            <td>
+              @if (entry.changesJson) {
+                <button type="button" class="btn btn-ghost btn-sm" (click)="toggleChanges(entry.id)">
+                  {{ expandedId() === entry.id ? 'Hide' : 'Show' }}
+                </button>
+              } @else {
+                <span class="empty">—</span>
+              }
+            </td>
+          </tr>
+          @if (expandedId() === entry.id) {
+            <tr class="changes-row">
+              <td colspan="5">
+                <pre>{{ prettyJson(entry.changesJson) }}</pre>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <app-paginator [paged]="paged()" (pageChange)="load($event)" />
+}

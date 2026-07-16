@@ -1,0 +1,104 @@
+<section class="page-header">
+  <div>
+    <h1>Automation rules</h1>
+    <p>Trigger actions automatically when tasks change</p>
+  </div>
+  <button type="button" class="btn btn-primary" (click)="openCreate()">New rule</button>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <div class="skeleton block"></div>
+} @else if (!paged() || paged()!.items.length === 0) {
+  <div class="panel">
+    <app-empty-state
+      icon="⚙"
+      heading="No automation rules"
+      message="Create a rule like: when a task is created, send a notification." />
+  </div>
+} @else {
+  <div class="rules-list">
+    @for (rule of paged()!.items; track rule.id) {
+      <article class="rule-card" [class.disabled]="!rule.isEnabled">
+        <div class="rule-info">
+          <h3>{{ rule.name }}</h3>
+          <p>
+            <span class="badge badge-accent">When: {{ rule.triggerType }}</span>
+            <span class="arrow">→</span>
+            <span class="badge badge-success">Then: {{ rule.actionType }}</span>
+          </p>
+        </div>
+        <div class="rule-actions">
+          <button type="button" class="btn btn-ghost btn-sm" (click)="toggleEnabled(rule)">
+            {{ rule.isEnabled ? 'Disable' : 'Enable' }}
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(rule)">Edit</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(rule)">Delete</button>
+        </div>
+      </article>
+    }
+  </div>
+
+  <app-paginator [paged]="paged()" (pageChange)="load($event)" />
+}
+
+<app-modal
+  [open]="modalOpen()"
+  [title]="editingRule() ? 'Edit rule' : 'New rule'"
+  (closed)="modalOpen.set(false)">
+  <form [formGroup]="form" (ngSubmit)="save()" class="form-grid">
+    <label>
+      <span>Name</span>
+      <input type="text" formControlName="name" placeholder="Notify on new tasks" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <span class="field-error">Name is required.</span>
+      }
+    </label>
+    <div class="form-row">
+      <label>
+        <span>Trigger</span>
+        <select formControlName="triggerType">
+          @for (trigger of triggers; track trigger) {
+            <option [value]="trigger">{{ trigger }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Action</span>
+        <select formControlName="actionType">
+          @for (action of actions; track action) {
+            <option [value]="action">{{ action }}</option>
+          }
+        </select>
+      </label>
+    </div>
+    <label>
+      <span>Trigger config (JSON)</span>
+      <textarea formControlName="triggerConfigJson" rows="3" spellcheck="false"></textarea>
+    </label>
+    <label>
+      <span>Action config (JSON)</span>
+      <textarea formControlName="actionConfigJson" rows="3" spellcheck="false"></textarea>
+    </label>
+    <label class="enabled-check">
+      <input type="checkbox" formControlName="isEnabled" />
+      <span>Enabled</span>
+    </label>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : editingRule() ? 'Save changes' : 'Create rule' }}
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-confirm-dialog
+  [open]="deleteTarget() !== null"
+  title="Delete rule?"
+  [message]="'Delete “' + (deleteTarget()?.name ?? '') + '”?'"
+  (confirmed)="deleteRule()"
+  (cancelled)="deleteTarget.set(null)" />

@@ -1,0 +1,207 @@
+<section class="page-header">
+  <div>
+    <h1>Board</h1>
+    <p>Kanban view of team tasks with live updates</p>
+  </div>
+
+  @if (teams().length > 0) {
+    <label class="team-select">
+      <span>Team</span>
+      <select [value]="selectedTeamId() ?? ''" (change)="selectTeam($any($event.target).value)">
+        @for (team of teams(); track team.id) {
+          <option [value]="team.id">{{ team.name }} ({{ team.key }})</option>
+        }
+      </select>
+    </label>
+  }
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+@if (teams().length === 0 && !loading()) {
+  <div class="panel">
+    <app-empty-state
+      heading="No teams yet"
+      message="Create a team first, then return here to manage tasks on the board." />
+  </div>
+} @else {
+  <div class="filters-bar board-filters">
+    <label>
+      <span>Project</span>
+      <select [value]="filters().projectId" (change)="setFilter('projectId', $any($event.target).value)">
+        <option value="">All</option>
+        @for (project of projects(); track project.id) {
+          <option [value]="project.id">{{ project.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Sprint</span>
+      <select [value]="filters().sprintId" (change)="setFilter('sprintId', $any($event.target).value)">
+        <option value="">All</option>
+        @for (sprint of sprints(); track sprint.id) {
+          <option [value]="sprint.id">{{ sprint.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Epic</span>
+      <select [value]="filters().epicId" (change)="setFilter('epicId', $any($event.target).value)">
+        <option value="">All</option>
+        @for (epic of epics(); track epic.id) {
+          <option [value]="epic.id">{{ epic.title }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Label</span>
+      <select [value]="filters().labelId" (change)="setFilter('labelId', $any($event.target).value)">
+        <option value="">All</option>
+        @for (label of labels(); track label.id) {
+          <option [value]="label.id">{{ label.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Priority</span>
+      <select [value]="filters().priority" (change)="setFilter('priority', $any($event.target).value)">
+        <option value="">All</option>
+        @for (priority of priorities; track priority) {
+          <option [value]="priority">{{ priority }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Saved view</span>
+      <select #viewSelect (change)="applySavedView(viewSelect.value); viewSelect.value = ''">
+        <option value="">Apply…</option>
+        @for (view of savedViews(); track view.id) {
+          <option [value]="view.id">{{ view.name }}</option>
+        }
+      </select>
+    </label>
+    <div class="filter-actions">
+      @if (hasActiveFilters()) {
+        <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear</button>
+      }
+      <button type="button" class="btn btn-ghost btn-sm" (click)="saveViewOpen.set(!saveViewOpen())">
+        Save view
+      </button>
+    </div>
+  </div>
+
+  @if (saveViewOpen()) {
+    <section class="panel save-view-panel">
+      <form [formGroup]="saveViewForm" (ngSubmit)="saveCurrentView()" class="save-view-form">
+        <input type="text" formControlName="name" placeholder="View name (e.g. My sprint focus)" />
+        <label class="shared-check">
+          <input type="checkbox" formControlName="isShared" />
+          <span>Shared</span>
+        </label>
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="saveViewForm.invalid">Save</button>
+      </form>
+      @if (savedViews().length > 0) {
+        <ul class="view-list">
+          @for (view of savedViews(); track view.id) {
+            <li>
+              <span>{{ view.name }}</span>
+              @if (view.isShared) {
+                <span class="badge badge-accent">Shared</span>
+              }
+              <button type="button" class="btn btn-ghost btn-sm" (click)="deleteSavedView(view.id)">
+                Delete
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  <section class="quick-add panel">
+    <form [formGroup]="form" (ngSubmit)="createTask()" class="quick-add-form">
+      <input type="text" formControlName="title" placeholder="Add a task title and press Enter…" />
+      <button type="submit" class="btn btn-primary" [disabled]="creating()">Add task</button>
+    </form>
+  </section>
+
+  @if (loading()) {
+    <div class="board-loading">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="skeleton column"></div>
+      }
+    </div>
+  } @else {
+    <div class="board">
+      @for (column of columns(); track column.state.id) {
+        <section class="column">
+          <header class="column-header">
+            <span class="dot" [style.background]="column.state.color"></span>
+            <h2>{{ column.state.name }}</h2>
+            <span class="count">{{ column.tasks.length }}</span>
+          </header>
+
+          <div class="column-body">
+            @for (task of column.tasks; track task.id) {
+              <article
+                class="task-card"
+                [class.blocked]="task.isBlocked"
+                (click)="openTask(task)"
+                (keydown.enter)="openTask(task)"
+                tabindex="0"
+                role="button">
+                <div class="task-meta">
+                  <span class="identifier">{{ task.identifier }}</span>
+                  <span class="priority" [class]="'priority ' + priorityClass(task.priority)">
+                    {{ task.priority }}
+                  </span>
+                </div>
+                <h3>{{ task.title }}</h3>
+                <div class="task-footer">
+                  @if (task.dueDate) {
+                    <small>Due {{ task.dueDate | date: 'MMM d' }}</small>
+                  }
+                  @if (task.storyPoints) {
+                    <small>{{ task.storyPoints }} pts</small>
+                  }
+                  @if (task.isBlocked) {
+                    <small class="blocked-note">Blocked</small>
+                  }
+                </div>
+                <div class="move-actions" (click)="$event.stopPropagation()">
+                  @for (state of states(); track state.id) {
+                    @if (state.id !== task.workflowStateId) {
+                      <button type="button" class="chip" (click)="moveTask(task, state.id)">
+                        → {{ state.name }}
+                      </button>
+                    }
+                  }
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+}
+
+<app-drawer
+  [open]="selectedTask() !== null"
+  [title]="selectedTask()?.identifier ?? ''"
+  (closed)="selectedTask.set(null)">
+  @if (selectedTask(); as task) {
+    <app-task-detail
+      [task]="task"
+      [projects]="projects()"
+      [epics]="epics()"
+      [sprints]="sprints()"
+      [allLabels]="labels()"
+      [companyMembers]="companyMembers()"
+      [teamTasks]="tasks()"
+      (updated)="onTaskUpdated($event)"
+      (deleted)="onTaskDeleted($event)" />
+  }
+</app-drawer>

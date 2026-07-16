@@ -1,0 +1,91 @@
+<section class="page-header">
+  <div>
+    <h1>Files</h1>
+    <p>Upload and manage attachments for tasks, projects and teams</p>
+  </div>
+</section>
+
+@if (error()) {
+  <div class="alert alert-error">{{ error() }}</div>
+}
+
+<div class="filters-bar">
+  <label>
+    <span>Attached to</span>
+    <select [value]="entityType()" (change)="setEntityType($any($event.target).value)">
+      @for (type of entityTypes; track type) {
+        <option [value]="type">{{ type }}</option>
+      }
+    </select>
+  </label>
+  <label class="entity-select">
+    <span>{{ entityType() }}</span>
+    <select [value]="entityId()" (change)="setEntity($any($event.target).value)">
+      <option value="">Select a {{ entityType().toLowerCase() }}…</option>
+      @for (option of entityOptions(); track option.id) {
+        <option [value]="option.id">{{ option.label }}</option>
+      }
+    </select>
+  </label>
+  @if (entityId()) {
+    <label class="upload-label">
+      <span>&nbsp;</span>
+      <span class="btn btn-primary" [class.disabled]="uploading()">
+        {{ uploading() ? 'Uploading…' : 'Upload file' }}
+        <input type="file" (change)="upload($any($event.target).files)" hidden [disabled]="uploading()" />
+      </span>
+    </label>
+  }
+</div>
+
+@if (!entityId()) {
+  <div class="panel">
+    <app-empty-state
+      icon="⎘"
+      heading="Pick an entity"
+      message="Choose a task, project or team above to see and upload its attachments." />
+  </div>
+} @else if (loading()) {
+  <div class="skeleton block"></div>
+} @else if (!paged() || paged()!.items.length === 0) {
+  <div class="panel">
+    <app-empty-state heading="No files yet" message="Upload the first attachment using the button above." />
+  </div>
+} @else {
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Uploaded</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (file of paged()!.items; track file.id) {
+          <tr>
+            <td class="name-cell">{{ file.fileName }}</td>
+            <td>{{ file.contentType }}</td>
+            <td>{{ fileSize(file.sizeBytes) }}</td>
+            <td>{{ file.createdAtUtc | date: 'MMM d, y HH:mm' }}</td>
+            <td class="actions-cell">
+              <button type="button" class="btn btn-ghost btn-sm" (click)="download(file)">Download</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(file)">Delete</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <app-paginator [paged]="paged()" (pageChange)="load($event)" />
+}
+
+<app-confirm-dialog
+  [open]="deleteTarget() !== null"
+  title="Delete file?"
+  [message]="'Delete “' + (deleteTarget()?.fileName ?? '') + '”? This cannot be undone.'"
+  (confirmed)="deleteFile()"
+  (cancelled)="deleteTarget.set(null)" />
