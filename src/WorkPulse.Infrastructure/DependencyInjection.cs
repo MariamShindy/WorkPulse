@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
@@ -17,8 +18,10 @@ using WorkPulse.Infrastructure.Jobs;
 using WorkPulse.Infrastructure.Persistence;
 using WorkPulse.Infrastructure.Persistence.Interceptors;
 using WorkPulse.Infrastructure.Services;
+using WorkPulse.Infrastructure.Services.Ai;
 using WorkPulse.Infrastructure.Services.Email;
 using WorkPulse.Infrastructure.Services.Read;
+using Microsoft.Extensions.Options;
 
 namespace WorkPulse.Infrastructure;
 
@@ -105,6 +108,7 @@ public static class DependencyInjection
 		services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
 		services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
 		services.Configure<FileStorageOptions>(configuration.GetSection("FileStorage"));
+		services.Configure<AiChatOptions>(configuration.GetSection(AiChatOptions.SectionName));
 		services.AddScoped<ICurrentUserService, CurrentUserService>();
 		services.AddScoped((Func<IServiceProvider, ITenantContext>)((IServiceProvider sp) => sp.GetRequiredService<TenantContext>()));
 		services.AddScoped<TenantContext>();
@@ -112,6 +116,13 @@ public static class DependencyInjection
 		services.AddScoped<ICacheService, CacheService>();
 		services.AddScoped<IFileStorageService, LocalFileStorageService>();
 		services.AddScoped<IAnalyticsReadService, AnalyticsReadService>();
+		services.AddScoped<IAiInsightsReadService, AiInsightsReadService>();
+		services.AddHttpClient<IAiChatService, OllamaChatService>(delegate(IServiceProvider sp, HttpClient client)
+		{
+			AiChatOptions opts = sp.GetRequiredService<IOptions<AiChatOptions>>().Value;
+			client.BaseAddress = new Uri(opts.BaseUrl.TrimEnd('/') + "/");
+			client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
+		});
 		services.AddScoped<ISearchReadService, SearchReadService>();
 		services.AddScoped<IReportsReadService, ReportsReadService>();
 		services.AddScoped<IJwtTokenService, JwtTokenService>();

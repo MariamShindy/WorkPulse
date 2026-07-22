@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +15,10 @@ using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Organizations.Queries.ListCompanyMembers;
 
-public sealed class ListCompanyMembersQueryHandler(IApplicationDbContext context, ITenantContext tenantContext) : IRequestHandler<ListCompanyMembersQuery, Result<PagedList<CompanyMemberDto>>>
+public sealed class ListCompanyMembersQueryHandler(
+	IApplicationDbContext context,
+	ITenantContext tenantContext,
+	IUserIdentityService userIdentity) : IRequestHandler<ListCompanyMembersQuery, Result<PagedList<CompanyMemberDto>>>
 {
 	public async Task<Result<PagedList<CompanyMemberDto>>> Handle(ListCompanyMembersQuery request, CancellationToken ct)
 	{
@@ -22,11 +27,38 @@ public sealed class ListCompanyMembersQueryHandler(IApplicationDbContext context
 		{
 			return tenantCheck.Error;
 		}
-		IOrderedQueryable<CompanyMember> query = from m in context.CompanyMembers.AsNoTracking()
-			where m.IsActive
-			orderby m.CreatedAtUtc
-			select m;
-		return new PagedList<CompanyMemberDto>(totalCount: await query.CountAsync(ct), items: await (from m in query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize)
-			select new CompanyMemberDto(m.Id, m.UserId, string.Empty, string.Empty, m.Role.ToString(), m.IsActive, m.CreatedAtUtc)).ToListAsync(ct), page: request.Pagination.Page, pageSize: request.Pagination.PageSize);
+
+		IQueryable<CompanyMember> query = context.CompanyMembers
+			.AsNoTracking()
+			.ForTenant(tenantContext)
+			.OrderBy((CompanyMember m) => m.CreatedAtUtc);
+
+		int totalCount = await query.CountAsync(ct);
+		List<CompanyMember> members = await query
+			.Skip(request.Pagination.Skip)
+			.Take(request.Pagination.PageSize)
+			.ToListAsync(ct);
+
+		IReadOnlyDictionary<Guid, UserIdentityDto> users = await userIdentity.GetByIdsAsync(
+			members.Select((CompanyMember m) => m.UserId),
+			ct);
+
+		List<CompanyMemberDto> items = members.Select((CompanyMember m) =>
+		{
+			users.TryGetValue(m.UserId, out UserIdentityDto? user);
+			string fullName = user == null
+				? string.Empty
+				: (user.FirstName + " " + user.LastName).Trim();
+			return new CompanyMemberDto(
+				m.Id,
+				m.UserId,
+				user?.Email ?? string.Empty,
+				fullName,
+				m.Role.ToString(),
+				m.IsActive,
+				m.CreatedAtUtc);
+		}).ToList();
+
+		return new PagedList<CompanyMemberDto>(items, request.Pagination.Page, request.Pagination.PageSize, totalCount);
 	}
 }

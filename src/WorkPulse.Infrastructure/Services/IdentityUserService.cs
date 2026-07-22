@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Common.Result;
 using WorkPulse.Infrastructure.Persistence;
@@ -64,6 +66,22 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 	{
 		ApplicationUser user = await userManager.FindByEmailAsync(email.Trim().ToLowerInvariant());
 		return (user == null) ? null : MapUser(user);
+	}
+
+	public async Task<IReadOnlyDictionary<Guid, UserIdentityDto>> GetByIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default(CancellationToken))
+	{
+		Guid[] ids = userIds.Distinct().ToArray();
+		if (ids.Length == 0)
+		{
+			return new Dictionary<Guid, UserIdentityDto>();
+		}
+
+		List<ApplicationUser> users = await userManager.Users
+			.AsNoTracking()
+			.Where((ApplicationUser u) => ids.Contains(u.Id))
+			.ToListAsync(ct);
+
+		return users.ToDictionary((ApplicationUser u) => u.Id, MapUser);
 	}
 
 	public async Task<Result<UserIdentityDto>> UpdateProfileAsync(Guid userId, string firstName, string lastName, string? avatarUrl, CancellationToken ct = default(CancellationToken))

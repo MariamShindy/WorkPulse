@@ -9,7 +9,7 @@
   <div class="alert alert-error">{{ error() }}</div>
 }
 
-<div class="filters-bar">
+<div class="filters-bar files-toolbar">
   <label>
     <span>Attached to</span>
     <select [value]="entityType()" (change)="setEntityType($any($event.target).value)">
@@ -28,13 +28,16 @@
     </select>
   </label>
   @if (entityId()) {
-    <label class="upload-label">
-      <span>&nbsp;</span>
-      <span class="btn btn-primary" [class.disabled]="uploading()">
+    <div class="upload-action">
+      <label class="btn btn-primary upload-btn" [class.disabled]="uploading()">
         {{ uploading() ? 'Uploading…' : 'Upload file' }}
-        <input type="file" (change)="upload($any($event.target).files)" hidden [disabled]="uploading()" />
-      </span>
-    </label>
+        <input
+          type="file"
+          (change)="upload($any($event.target).files)"
+          [disabled]="uploading()"
+          aria-label="Upload file" />
+      </label>
+    </div>
   }
 </div>
 

@@ -108,6 +108,11 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'assistant',
+        loadComponent: () =>
+          import('./features/assistant/assistant.component').then((m) => m.AssistantComponent)
+      },
+      {
         path: 'reports',
         loadComponent: () =>
           import('./features/reports/reports.component').then((m) => m.ReportsComponent)

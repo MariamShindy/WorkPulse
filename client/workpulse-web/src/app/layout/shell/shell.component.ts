@@ -55,6 +55,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     {
       title: 'Insights',
       items: [
+        { label: 'AI Assistant', path: '/assistant', icon: '✦' },
         { label: 'Reports', path: '/reports', icon: '▥' },
         { label: 'Files', path: '/files', icon: '⎘' }
       ]

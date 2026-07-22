@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using WorkPulse.Application.Common.Result;
@@ -14,6 +15,8 @@ public interface IUserIdentityService
 	Task<UserIdentityDto?> GetByIdAsync(Guid userId, CancellationToken ct = default(CancellationToken));
 
 	Task<UserIdentityDto?> GetByEmailAsync(string email, CancellationToken ct = default(CancellationToken));
+
+	Task<IReadOnlyDictionary<Guid, UserIdentityDto>> GetByIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default(CancellationToken));
 
 	Task<Result<UserIdentityDto>> UpdateProfileAsync(Guid userId, string firstName, string lastName, string? avatarUrl, CancellationToken ct = default(CancellationToken));
 

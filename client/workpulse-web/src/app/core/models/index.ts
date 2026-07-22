@@ -430,3 +430,13 @@ export interface AuditLogEntry {
   changesJson?: string | null;
   timestamp: string;
 }
+
+export interface AiChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiChatResponse {
+  reply: string;
+  toolsUsed: string[];
+}

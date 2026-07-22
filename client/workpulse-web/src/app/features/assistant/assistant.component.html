@@ -1,0 +1,75 @@
+<section class="page-header">
+  <div>
+    <h1>AI Assistant</h1>
+    <p>Ask about workload, deadlines and monthly KPIs — answers are grounded in your live data</p>
+  </div>
+  @if (entries().length > 0) {
+    <button type="button" class="btn btn-ghost btn-sm" (click)="clear()">Clear chat</button>
+  }
+</section>
+
+<div class="chat-shell panel">
+  <div class="transcript">
+    @if (entries().length === 0) {
+      <div class="welcome">
+        <span class="welcome-mark" aria-hidden="true">✦</span>
+        <h2>How can I help you today?</h2>
+        <p class="text-muted">Pick a prompt to get started, or type your own question below.</p>
+        <div class="suggestions">
+          @for (s of suggestions; track s.label) {
+            <button type="button" class="suggestion" (click)="useSuggestion(s)" [disabled]="sending()">
+              <span class="suggestion-icon" aria-hidden="true">{{ s.icon }}</span>
+              <span class="suggestion-body">
+                <strong>{{ s.label }}</strong>
+                <small>{{ s.prompt }}</small>
+              </span>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    @for (entry of entries(); track $index) {
+      <div class="msg" [class.msg-user]="entry.role === 'user'" [class.msg-ai]="entry.role === 'assistant'">
+        <span class="avatar" aria-hidden="true">{{ entry.role === 'user' ? '🧑' : '✦' }}</span>
+        <div class="bubble">
+          @if (entry.pending) {
+            <div class="typing" aria-label="Assistant is thinking">
+              <span></span><span></span><span></span>
+            </div>
+          } @else {
+            <p class="content">{{ entry.content }}</p>
+            @if (entry.toolsUsed && entry.toolsUsed.length > 0) {
+              <div class="tools" aria-label="Data sources used">
+                @for (tool of entry.toolsUsed; track tool) {
+                  <span class="tool-chip">🔎 {{ toolLabel(tool) }}</span>
+                }
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+
+    <div #anchor></div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error chat-error">{{ error() }}</div>
+  }
+
+  <form class="composer" (ngSubmit)="send()">
+    <textarea
+      [ngModel]="draft()"
+      (ngModelChange)="draft.set($event)"
+      name="draft"
+      rows="1"
+      placeholder="Ask about your team's tasks, deadlines or KPIs…"
+      (keydown)="onKeydown($event)"
+      [disabled]="sending()"
+      aria-label="Message the assistant"></textarea>
+    <button type="submit" class="btn btn-primary send-btn" [disabled]="sending() || !draft().trim()">
+      {{ sending() ? '…' : 'Send' }}
+    </button>
+  </form>
+</div>

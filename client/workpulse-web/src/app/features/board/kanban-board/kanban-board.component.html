@@ -141,7 +141,10 @@
     <div class="board-wrap">
       <div class="board" cdkDropListGroup>
         @for (column of columns(); track column.state.id) {
-          <section class="column" [class.drop-active]="draggingTaskId() !== null">
+          <section
+            class="column"
+            [class.drop-active]="draggingTaskId() !== null"
+            [class.is-receiving]="draggingTaskId() !== null">
             <header class="column-header">
               <span class="dot" [style.background]="column.state.color"></span>
               <h2>{{ column.state.name }}</h2>
@@ -153,10 +156,11 @@
               cdkDropList
               [id]="'col-' + column.state.id"
               [cdkDropListData]="column.tasks"
+              [cdkDropListSortingDisabled]="true"
               (cdkDropListDropped)="dropped($event)">
 
               @if (column.tasks.length === 0) {
-                <div class="column-empty">Drop tasks here</div>
+                <div class="column-empty" aria-hidden="true">Drop tasks here</div>
               }
 
               @for (task of column.tasks; track task.id) {
@@ -166,26 +170,24 @@
                   [class.is-dragging]="draggingTaskId() === task.id"
                   cdkDrag
                   [cdkDragData]="task"
-                  (cdkDragStarted)="draggingTaskId.set(task.id)"
-                  (cdkDragEnded)="draggingTaskId.set(null)"
+                  [cdkDragBoundary]="'.board'"
+                  [cdkDragStartDelay]="{ touch: 180, mouse: 0 }"
+                  (cdkDragStarted)="onDragStarted(task.id)"
+                  (cdkDragEnded)="onDragEnded()"
                   (click)="openTask(task)"
                   (keydown.enter)="openTask(task)"
                   tabindex="0"
                   role="button"
-                  [attr.aria-label]="task.identifier + ': ' + task.title">
+                  [attr.aria-label]="task.identifier + ': ' + task.title"
+                  [attr.aria-grabbed]="draggingTaskId() === task.id">
 
-                  <!-- drag handle -->
-                  <span class="drag-handle" cdkDragHandle aria-hidden="true" title="Drag to move">
-                    ⠿
-                  </span>
+                  <span class="drag-handle" aria-hidden="true" title="Drag to move">⠿</span>
 
-                  <!-- custom drag preview (shown while dragging) -->
                   <div *cdkDragPreview class="drag-preview">
                     <span class="identifier">{{ task.identifier }}</span>
-                    <p>{{ task.title }}</p>
+                    <span class="preview-title">{{ task.title }}</span>
                   </div>
 
-                  <!-- placeholder slot shown in source column while dragging -->
                   <div *cdkDragPlaceholder class="drag-placeholder"></div>
 
                   <div class="task-meta">
@@ -206,14 +208,21 @@
                       <span class="task-chip blocked-chip">🚫 Blocked</span>
                     }
                   </div>
-                  <div class="move-actions" (click)="$event.stopPropagation()">
-                    @for (state of states(); track state.id) {
-                      @if (state.id !== task.workflowStateId) {
-                        <button type="button" class="chip" (click)="moveTask(task, state.id)">
-                          → {{ state.name }}
-                        </button>
+
+                  <div class="move-fallback" (click)="$event.stopPropagation()" (pointerdown)="$event.stopPropagation()">
+                    <label class="sr-only" [attr.for]="'move-' + task.id">Move to status</label>
+                    <select
+                      class="move-select"
+                      [id]="'move-' + task.id"
+                      (change)="onMoveSelect(task, $event)"
+                      [attr.aria-label]="'Move ' + task.identifier + ' to another status'">
+                      <option value="">Move to…</option>
+                      @for (state of states(); track state.id) {
+                        @if (state.id !== task.workflowStateId) {
+                          <option [value]="state.id">{{ state.name }}</option>
+                        }
                       }
-                    }
+                    </select>
                   </div>
                 </article>
               }

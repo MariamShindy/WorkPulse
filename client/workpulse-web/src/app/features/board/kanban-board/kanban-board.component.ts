@@ -86,6 +86,12 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   readonly saveViewOpen = signal(false);
   readonly draggingTaskId = signal<string | null>(null);
 
+  /** Suppresses card click after a drag so the drawer does not open on drop. */
+  private suppressNextClick = false;
+
+  /** Task ids currently being moved — skip redundant realtime reloads for these. */
+  private readonly pendingMoveIds = new Set<string>();
+
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]]
   });
@@ -143,7 +149,7 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
       error: () => this.loading.set(false)
     });
 
-    this.realtimeSub = this.realtime.taskEvents$.subscribe(() => this.reloadTasks());
+    this.realtimeSub = this.realtime.taskEvents$.subscribe((event) => this.applyRealtimeEvent(event));
   }
 
   ngOnDestroy(): void {
@@ -302,12 +308,14 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
       });
   }
 
-  moveTask(task: TaskItem, targetStateId: string): void {
-    if (task.workflowStateId === targetStateId) return;
+  moveTask(task: TaskItem, targetStateId: string, sortOrder?: number): void {
+    if (task.workflowStateId === targetStateId && sortOrder === undefined) return;
 
-    // Optimistic update; revert on failure.
     const previous = this.tasks();
     const targetState = this.states().find((s) => s.id === targetStateId);
+    this.pendingMoveIds.add(task.id);
+
+    // Optimistic update first so the card snaps to the new column with no wait.
     this.tasks.update((list) =>
       list.map((t) =>
         t.id === task.id
@@ -315,15 +323,22 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
               ...t,
               workflowStateId: targetStateId,
               workflowStateName: targetState?.name ?? t.workflowStateName,
-              workflowStateType: targetState?.type ?? t.workflowStateType
+              workflowStateType: targetState?.type ?? t.workflowStateType,
+              sortOrder: sortOrder ?? t.sortOrder
             }
           : t
       ));
 
-    this.tasksService.move(task.id, targetStateId).subscribe({
-      next: (updatedTask) =>
-        this.tasks.update((list) => list.map((t) => (t.id === updatedTask.id ? updatedTask : t))),
+    this.tasksService.move(task.id, targetStateId, sortOrder).subscribe({
+      next: (updatedTask) => {
+        this.pendingMoveIds.delete(task.id);
+        // Patch only if server returned different fields — avoid a full board redraw.
+        this.tasks.update((list) =>
+          list.map((t) => (t.id === updatedTask.id ? { ...t, ...updatedTask } : t))
+        );
+      },
       error: (err) => {
+        this.pendingMoveIds.delete(task.id);
         this.tasks.set(previous);
         this.error.set(err.error?.description ?? 'Failed to move task.');
       }
@@ -331,14 +346,71 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   }
 
   dropped(event: CdkDragDrop<TaskItem[]>): void {
-    if (event.previousContainer === event.container) return;
     const task = event.item.data as TaskItem;
+    if (!task) return;
+
     const targetStateId = event.container.id.replace(/^col-/, '');
-    this.moveTask(task, targetStateId);
+    if (!targetStateId) return;
+    if (event.previousContainer === event.container) return;
+
+    // Clear drag chrome immediately so the optimistic column snap isn't masked.
+    this.draggingTaskId.set(null);
+    this.moveTask(task, targetStateId, event.currentIndex);
+  }
+
+  onDragStarted(taskId: string): void {
+    this.draggingTaskId.set(taskId);
+    this.suppressNextClick = true;
+  }
+
+  onDragEnded(): void {
+    this.draggingTaskId.set(null);
+    window.setTimeout(() => {
+      this.suppressNextClick = false;
+    }, 80);
   }
 
   openTask(task: TaskItem): void {
+    if (this.suppressNextClick || this.draggingTaskId()) return;
     this.selectedTask.set(task);
+  }
+
+  onMoveSelect(task: TaskItem, event: Event): void {
+    event.stopPropagation();
+    const select = event.target as HTMLSelectElement;
+    const targetStateId = select.value;
+    select.value = '';
+    if (targetStateId) {
+      this.moveTask(task, targetStateId);
+    }
+  }
+
+  /** Apply SignalR payloads in-place instead of refetching the whole board. */
+  private applyRealtimeEvent(event: { type: string; payload: unknown }): void {
+    const payload = event.payload as Partial<TaskItem> | null;
+    const taskId = payload && typeof payload === 'object' ? (payload as TaskItem).id : undefined;
+    if (!taskId) {
+      // Unknown payload shape — soft refresh only when not mid-drag.
+      if (!this.draggingTaskId() && this.pendingMoveIds.size === 0) {
+        this.reloadTasks();
+      }
+      return;
+    }
+
+    if (this.pendingMoveIds.has(taskId)) {
+      return;
+    }
+
+    const existing = this.tasks().find((t) => t.id === taskId);
+    if (!existing) {
+      // New task from another client — fetch list once.
+      this.reloadTasks();
+      return;
+    }
+
+    this.tasks.update((list) =>
+      list.map((t) => (t.id === taskId ? { ...t, ...(payload as TaskItem) } : t))
+    );
   }
 
   onTaskUpdated(task: TaskItem): void {
