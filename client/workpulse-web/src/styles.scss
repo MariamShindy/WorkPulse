@@ -369,6 +369,7 @@ textarea { resize: vertical; min-height: 4rem; }
   border-radius: var(--r-lg);
   background: var(--bg-card);
   border: 1px solid var(--border);
+  transition: border-color var(--transition-base);
 }
 
 .card {
@@ -591,6 +592,36 @@ textarea { resize: vertical; min-height: 4rem; }
   }
 }
 
+/* ── Inline input group (e.g. password with toggle button) ──────────────── */
+
+.input-group {
+  display: flex;
+
+  input {
+    border-radius: var(--r-md) 0 0 var(--r-md) !important;
+    border-right-width: 0 !important;
+    flex: 1;
+  }
+
+  .input-suffix-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.85rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1rem;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &:hover { background: var(--bg-hover); color: var(--text); }
+  }
+}
+
 /* ── Empty state ─────────────────────────────────────────────────────────── */
 
 .empty {
@@ -608,6 +639,16 @@ textarea { resize: vertical; min-height: 4rem; }
   color: var(--danger);
   font-size: var(--font-xs);
   margin-top: 0.25rem;
+}
+
+/* ── Link ────────────────────────────────────────────────────────────────── */
+
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover { text-decoration: underline; }
 }
 
 /* ── Divider ─────────────────────────────────────────────────────────────── */

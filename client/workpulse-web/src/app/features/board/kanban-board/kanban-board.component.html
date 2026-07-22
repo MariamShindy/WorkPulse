@@ -84,10 +84,10 @@
     </label>
     <div class="filter-actions">
       @if (hasActiveFilters()) {
-        <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear</button>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear filters</button>
       }
-      <button type="button" class="btn btn-ghost btn-sm" (click)="saveViewOpen.set(!saveViewOpen())">
-        Save view
+      <button type="button" class="btn btn-subtle btn-sm" (click)="saveViewOpen.set(!saveViewOpen())">
+        {{ saveViewOpen() ? 'Cancel' : 'Save view' }}
       </button>
     </div>
   </div>
@@ -122,68 +122,78 @@
 
   <section class="quick-add panel">
     <form [formGroup]="form" (ngSubmit)="createTask()" class="quick-add-form">
-      <input type="text" formControlName="title" placeholder="Add a task title and press Enter…" />
-      <button type="submit" class="btn btn-primary" [disabled]="creating()">Add task</button>
+      <input type="text" formControlName="title" placeholder="Quick add — type a task title and press Enter…" />
+      <button type="submit" class="btn btn-primary" [disabled]="creating()">
+        {{ creating() ? 'Adding…' : '+ Add task' }}
+      </button>
     </form>
   </section>
 
   @if (loading()) {
-    <div class="board-loading">
-      @for (i of [1, 2, 3, 4]; track i) {
-        <div class="skeleton column"></div>
-      }
+    <div class="board-wrap">
+      <div class="board board-loading">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="skeleton column-skeleton"></div>
+        }
+      </div>
     </div>
   } @else {
-    <div class="board">
-      @for (column of columns(); track column.state.id) {
-        <section class="column">
-          <header class="column-header">
-            <span class="dot" [style.background]="column.state.color"></span>
-            <h2>{{ column.state.name }}</h2>
-            <span class="count">{{ column.tasks.length }}</span>
-          </header>
+    <div class="board-wrap">
+      <div class="board">
+        @for (column of columns(); track column.state.id) {
+          <section class="column">
+            <header class="column-header">
+              <span class="dot" [style.background]="column.state.color"></span>
+              <h2>{{ column.state.name }}</h2>
+              <span class="count badge">{{ column.tasks.length }}</span>
+            </header>
 
-          <div class="column-body">
-            @for (task of column.tasks; track task.id) {
-              <article
-                class="task-card"
-                [class.blocked]="task.isBlocked"
-                (click)="openTask(task)"
-                (keydown.enter)="openTask(task)"
-                tabindex="0"
-                role="button">
-                <div class="task-meta">
-                  <span class="identifier">{{ task.identifier }}</span>
-                  <span class="priority" [class]="'priority ' + priorityClass(task.priority)">
-                    {{ task.priority }}
-                  </span>
-                </div>
-                <h3>{{ task.title }}</h3>
-                <div class="task-footer">
-                  @if (task.dueDate) {
-                    <small>Due {{ task.dueDate | date: 'MMM d' }}</small>
-                  }
-                  @if (task.storyPoints) {
-                    <small>{{ task.storyPoints }} pts</small>
-                  }
-                  @if (task.isBlocked) {
-                    <small class="blocked-note">Blocked</small>
-                  }
-                </div>
-                <div class="move-actions" (click)="$event.stopPropagation()">
-                  @for (state of states(); track state.id) {
-                    @if (state.id !== task.workflowStateId) {
-                      <button type="button" class="chip" (click)="moveTask(task, state.id)">
-                        → {{ state.name }}
-                      </button>
+            <div class="column-body">
+              @if (column.tasks.length === 0) {
+                <div class="column-empty">No tasks</div>
+              }
+              @for (task of column.tasks; track task.id) {
+                <article
+                  class="task-card"
+                  [class.blocked]="task.isBlocked"
+                  (click)="openTask(task)"
+                  (keydown.enter)="openTask(task)"
+                  tabindex="0"
+                  role="button"
+                  [attr.aria-label]="task.identifier + ': ' + task.title">
+                  <div class="task-meta">
+                    <span class="identifier">{{ task.identifier }}</span>
+                    <span class="priority" [class]="'priority priority--' + priorityClass(task.priority)">
+                      {{ task.priority }}
+                    </span>
+                  </div>
+                  <h3>{{ task.title }}</h3>
+                  <div class="task-footer">
+                    @if (task.dueDate) {
+                      <span class="task-chip">📅 {{ task.dueDate | date: 'MMM d' }}</span>
                     }
-                  }
-                </div>
-              </article>
-            }
-          </div>
-        </section>
-      }
+                    @if (task.storyPoints) {
+                      <span class="task-chip">{{ task.storyPoints }} pts</span>
+                    }
+                    @if (task.isBlocked) {
+                      <span class="task-chip blocked-chip">🚫 Blocked</span>
+                    }
+                  </div>
+                  <div class="move-actions" (click)="$event.stopPropagation()">
+                    @for (state of states(); track state.id) {
+                      @if (state.id !== task.workflowStateId) {
+                        <button type="button" class="chip" (click)="moveTask(task, state.id)">
+                          → {{ state.name }}
+                        </button>
+                      }
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          </section>
+        }
+      </div>
     </div>
   }
 }

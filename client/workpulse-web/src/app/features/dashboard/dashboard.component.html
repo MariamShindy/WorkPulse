@@ -22,42 +22,48 @@
 }
 
 @if (loading()) {
-  <div class="loading-grid">
-    @for (i of [1, 2, 3, 4, 5]; track i) {
-      <div class="skeleton card"></div>
+  <div class="stats-grid loading-grid">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <div class="skeleton stat-skeleton"></div>
     }
   </div>
 } @else {
   @if (data(); as d) {
   <div class="stats-grid">
     <article class="stat-card">
-      <span class="label">Total tasks</span>
-      <strong>{{ d.totalTasks }}</strong>
+      <span class="stat-label">Total tasks</span>
+      <div class="stat-value">{{ d.totalTasks }}</div>
+      <span class="stat-icon stat-icon--total">📋</span>
     </article>
-    <article class="stat-card">
-      <span class="label">Open</span>
-      <strong>{{ d.openTasks }}</strong>
+    <article class="stat-card stat-card--open">
+      <span class="stat-label">Open</span>
+      <div class="stat-value">{{ d.openTasks }}</div>
+      <span class="stat-icon stat-icon--open">🔓</span>
     </article>
-    <article class="stat-card">
-      <span class="label">Completed</span>
-      <strong>{{ d.completedTasks }}</strong>
+    <article class="stat-card stat-card--done">
+      <span class="stat-label">Completed</span>
+      <div class="stat-value">{{ d.completedTasks }}</div>
+      <span class="stat-icon stat-icon--done">✅</span>
     </article>
-    <article class="stat-card" [class.attention]="d.overdueTasks > 0">
-      <span class="label">Overdue</span>
-      <strong>{{ d.overdueTasks }}</strong>
+    <article class="stat-card" [class.stat-card--danger]="d.overdueTasks > 0">
+      <span class="stat-label">Overdue</span>
+      <div class="stat-value">{{ d.overdueTasks }}</div>
+      <span class="stat-icon stat-icon--danger">⚠️</span>
     </article>
-    <article class="stat-card">
-      <span class="label">Unassigned</span>
-      <strong>{{ d.unassignedTasks }}</strong>
+    <article class="stat-card stat-card--warn">
+      <span class="stat-label">Unassigned</span>
+      <div class="stat-value">{{ d.unassignedTasks }}</div>
+      <span class="stat-icon stat-icon--warn">👤</span>
     </article>
-    <article class="stat-card">
-      <span class="label">Avg. cycle time</span>
-      <strong>{{ d.averageCycleTimeDays | number: '1.0-1' }}<small>days</small></strong>
+    <article class="stat-card stat-card--info">
+      <span class="stat-label">Avg. cycle time</span>
+      <div class="stat-value">{{ d.averageCycleTimeDays | number: '1.0-1' }}<small>days</small></div>
+      <span class="stat-icon stat-icon--info">⏱</span>
     </article>
   </div>
 
   <div class="charts-grid">
-    <section class="panel">
+    <section class="panel chart-panel">
       <h2>Tasks by status</h2>
       @if (d.tasksByStatus.length === 0) {
         <p class="empty">No tasks yet.</p>
@@ -76,7 +82,7 @@
       }
     </section>
 
-    <section class="panel">
+    <section class="panel chart-panel">
       <h2>Tasks by priority</h2>
       @if (d.tasksByPriority.length === 0) {
         <p class="empty">No tasks yet.</p>
@@ -95,12 +101,12 @@
       }
     </section>
 
-    <section class="panel">
+    <section class="panel chart-panel">
       <h2>Velocity <small>created vs completed / week</small></h2>
       @if (velocity().length === 0) {
         <p class="empty">Not enough data yet.</p>
       } @else {
-        <div class="velocity-chart">
+        <div class="velocity-chart" role="img" aria-label="Weekly velocity chart">
           @for (point of velocity(); track point.weekStart) {
             <div class="week" [title]="point.weekStart">
               <div class="cols">
@@ -112,13 +118,13 @@
           }
         </div>
         <div class="legend">
-          <span><i class="dot created"></i> Created</span>
-          <span><i class="dot completed"></i> Completed</span>
+          <span><i class="dot created" aria-hidden="true"></i> Created</span>
+          <span><i class="dot completed" aria-hidden="true"></i> Completed</span>
         </div>
       }
     </section>
 
-    <section class="panel">
+    <section class="panel chart-panel">
       <h2>Project progress</h2>
       @if (projectProgress().length === 0) {
         <p class="empty">No projects yet. <a routerLink="/projects" class="link">Create one</a>.</p>
@@ -131,7 +137,7 @@
                 <strong>{{ project.projectName }}</strong>
                 <span class="pct">{{ project.completionRate * 100 | number: '1.0-0' }}%</span>
               </div>
-              <div class="bar-track">
+              <div class="bar-track progress-track">
                 <div class="bar-fill success" [style.width.%]="project.completionRate * 100"></div>
               </div>
               <small>{{ project.completedTasks }} / {{ project.totalTasks }} tasks done</small>

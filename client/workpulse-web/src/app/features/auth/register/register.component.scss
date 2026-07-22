@@ -8,13 +8,16 @@
 
   h1 {
     margin: 0.75rem 0 0.35rem;
-    font-size: 1.75rem;
-    font-weight: 650;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
   }
 
   p {
     margin: 0;
     color: var(--text-muted);
+    font-size: var(--font-sm);
   }
 }
 
@@ -22,13 +25,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: white;
-  font-weight: 700;
-  font-size: 0.85rem;
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 14px var(--accent-soft), 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .name-row {
@@ -39,16 +44,55 @@
 
 form {
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 label {
   display: grid;
   gap: 0.4rem;
 
-  span {
-    font-size: 0.85rem;
+  > span:first-child {
+    font-size: var(--font-xs);
+    font-weight: 600;
     color: var(--text-muted);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+}
+
+input.invalid {
+  border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+  &:focus { box-shadow: 0 0 0 3px var(--danger-soft); }
+}
+
+.input-group {
+  position: relative;
+  display: flex;
+
+  input {
+    border-radius: var(--r-md) 0 0 var(--r-md);
+    border-right: none;
+    flex: 1;
+  }
+}
+
+.input-suffix-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.85rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1rem;
+  transition: background var(--transition-fast), color var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text);
   }
 }
 
@@ -56,11 +100,13 @@ label {
   margin-top: 1.5rem;
   text-align: center;
   color: var(--text-muted);
+  font-size: var(--font-sm);
 
   a {
     color: var(--accent);
     text-decoration: none;
     font-weight: 600;
+    &:hover { text-decoration: underline; }
   }
 }
 
