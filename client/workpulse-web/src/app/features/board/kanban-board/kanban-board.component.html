@@ -139,28 +139,55 @@
     </div>
   } @else {
     <div class="board-wrap">
-      <div class="board">
+      <div class="board" cdkDropListGroup>
         @for (column of columns(); track column.state.id) {
-          <section class="column">
+          <section class="column" [class.drop-active]="draggingTaskId() !== null">
             <header class="column-header">
               <span class="dot" [style.background]="column.state.color"></span>
               <h2>{{ column.state.name }}</h2>
               <span class="count badge">{{ column.tasks.length }}</span>
             </header>
 
-            <div class="column-body">
+            <div
+              class="column-body"
+              cdkDropList
+              [id]="'col-' + column.state.id"
+              [cdkDropListData]="column.tasks"
+              (cdkDropListDropped)="dropped($event)">
+
               @if (column.tasks.length === 0) {
-                <div class="column-empty">No tasks</div>
+                <div class="column-empty">Drop tasks here</div>
               }
+
               @for (task of column.tasks; track task.id) {
                 <article
                   class="task-card"
                   [class.blocked]="task.isBlocked"
+                  [class.is-dragging]="draggingTaskId() === task.id"
+                  cdkDrag
+                  [cdkDragData]="task"
+                  (cdkDragStarted)="draggingTaskId.set(task.id)"
+                  (cdkDragEnded)="draggingTaskId.set(null)"
                   (click)="openTask(task)"
                   (keydown.enter)="openTask(task)"
                   tabindex="0"
                   role="button"
                   [attr.aria-label]="task.identifier + ': ' + task.title">
+
+                  <!-- drag handle -->
+                  <span class="drag-handle" cdkDragHandle aria-hidden="true" title="Drag to move">
+                    ⠿
+                  </span>
+
+                  <!-- custom drag preview (shown while dragging) -->
+                  <div *cdkDragPreview class="drag-preview">
+                    <span class="identifier">{{ task.identifier }}</span>
+                    <p>{{ task.title }}</p>
+                  </div>
+
+                  <!-- placeholder slot shown in source column while dragging -->
+                  <div *cdkDragPlaceholder class="drag-placeholder"></div>
+
                   <div class="task-meta">
                     <span class="identifier">{{ task.identifier }}</span>
                     <span class="priority" [class]="'priority priority--' + priorityClass(task.priority)">

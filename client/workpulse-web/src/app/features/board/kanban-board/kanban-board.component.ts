@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { Subscription, forkJoin, of } from 'rxjs';
 import { TasksService } from '../../../core/services/tasks.service';
 import { TeamsService } from '../../../core/services/teams.service';
@@ -42,7 +43,7 @@ const EMPTY_FILTERS: BoardFilters = { projectId: '', epicId: '', sprintId: '', l
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DrawerComponent, EmptyStateComponent, TaskDetailComponent],
+  imports: [CommonModule, ReactiveFormsModule, DrawerComponent, EmptyStateComponent, TaskDetailComponent, DragDropModule],
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss'
 })
@@ -83,6 +84,7 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   readonly filters = signal<BoardFilters>({ ...EMPTY_FILTERS });
   readonly selectedTask = signal<TaskItem | null>(null);
   readonly saveViewOpen = signal(false);
+  readonly draggingTaskId = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]]
@@ -326,6 +328,13 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
         this.error.set(err.error?.description ?? 'Failed to move task.');
       }
     });
+  }
+
+  dropped(event: CdkDragDrop<TaskItem[]>): void {
+    if (event.previousContainer === event.container) return;
+    const task = event.item.data as TaskItem;
+    const targetStateId = event.container.id.replace(/^col-/, '');
+    this.moveTask(task, targetStateId);
   }
 
   openTask(task: TaskItem): void {

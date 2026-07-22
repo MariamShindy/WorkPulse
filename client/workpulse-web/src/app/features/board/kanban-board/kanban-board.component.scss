@@ -17,11 +17,7 @@
 
 .board-filters {
   label { min-width: 120px; }
-
-  select {
-    padding: 0.45rem 0.65rem;
-    font-size: var(--font-sm);
-  }
+  select { padding: 0.45rem 0.65rem; font-size: var(--font-sm); }
 }
 
 .filter-actions {
@@ -50,7 +46,6 @@
   color: var(--text-muted);
   font-size: var(--font-sm);
   white-space: nowrap;
-
   input { accent-color: var(--accent); }
 }
 
@@ -68,7 +63,6 @@
     font-size: var(--font-sm);
     padding: 0.35rem 0;
     border-top: 1px solid var(--border);
-
     span:first-child { flex: 1; }
   }
 }
@@ -88,7 +82,6 @@
 .board-wrap {
   position: relative;
 
-  /* right-edge scroll hint on touch/narrow displays */
   &::after {
     content: '';
     position: absolute;
@@ -97,16 +90,13 @@
     background: linear-gradient(to right, transparent, var(--bg-app) 85%);
     pointer-events: none;
     z-index: 2;
-
-    /* hide on wide screens where all columns fit */
     @media (min-width: 1200px) { display: none; }
   }
 }
 
 /* ── Board grid ──────────────────────────────────────────────────────────── */
 
-.board,
-.board-loading {
+.board {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(272px, 1fr);
@@ -116,8 +106,16 @@
   scroll-snap-type: x proximity;
   overscroll-behavior-x: contain;
 
-  /* thinner scrollbar for the board */
   &::-webkit-scrollbar { height: 4px; }
+}
+
+.board-loading {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(272px, 1fr);
+  gap: 0.85rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
 }
 
 /* ── Column ──────────────────────────────────────────────────────────────── */
@@ -131,6 +129,12 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   scroll-snap-align: start;
+  transition: border-color var(--transition-base), background var(--transition-base);
+
+  /* highlight when a drag is in progress */
+  &.drop-active {
+    border-color: var(--border-strong);
+  }
 }
 
 .column-header {
@@ -168,14 +172,23 @@
   flex-shrink: 0;
 }
 
+/* ── Column body (CDK drop list) ─────────────────────────────────────────── */
+
 .column-body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  align-content: start;
   padding: 0.75rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 80px; /* ensure drop target is always hittable */
+  transition: background var(--transition-fast);
+
+  /* CDK: receiving = a dragged card is hovering over this list */
+  &.cdk-drop-list-receiving {
+    background: var(--bg-active);
+    border-radius: 0 0 var(--r-xl) var(--r-xl);
+  }
 }
 
 .column-empty {
@@ -185,6 +198,13 @@
   padding: 1.5rem 0;
   border: 1.5px dashed var(--border);
   border-radius: var(--r-md);
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+
+  /* highlight when something is dragged over an empty column */
+  .cdk-drop-list-receiving & {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }
 
 .column-skeleton {
@@ -195,7 +215,8 @@
 /* ── Task cards ──────────────────────────────────────────────────────────── */
 
 .task-card {
-  padding: 0.85rem 0.9rem;
+  position: relative;
+  padding: 0.85rem 0.9rem 0.85rem 2rem; /* left room for drag handle */
   border-radius: var(--r-lg);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -203,7 +224,8 @@
   transition:
     transform var(--transition-base),
     box-shadow var(--transition-base),
-    border-color var(--transition-base);
+    border-color var(--transition-base),
+    opacity var(--transition-base);
 
   &:hover,
   &:focus-visible {
@@ -211,11 +233,21 @@
     box-shadow: var(--shadow-sm);
     border-color: var(--border-strong);
     outline: none;
+
+    .drag-handle { opacity: 1; }
   }
 
   &.blocked {
     border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
     background: color-mix(in srgb, var(--danger-soft) 30%, var(--bg-elevated));
+  }
+
+  /* ghost card left in source column while dragging */
+  &.is-dragging {
+    opacity: 0.4;
+    transform: none;
+    box-shadow: none;
+    pointer-events: none;
   }
 
   h3 {
@@ -226,6 +258,84 @@
     color: var(--text);
   }
 }
+
+/* ── Drag handle ─────────────────────────────────────────────────────────── */
+
+.drag-handle {
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  color: var(--text-subtle);
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+  user-select: none;
+
+  &:active { cursor: grabbing; }
+  &:hover  { color: var(--text-muted); }
+}
+
+/* ── CDK drag preview (floating card while dragging) ─────────────────────── */
+
+.drag-preview {
+  padding: 0.75rem 1rem;
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  box-shadow: var(--shadow-md), var(--accent-glow);
+  max-width: 280px;
+  pointer-events: none;
+
+  .identifier {
+    font-size: var(--font-xs);
+    color: var(--accent);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--font-sm);
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ── CDK drag placeholder (drop zone indicator) ──────────────────────────── */
+
+.drag-placeholder {
+  height: 72px;
+  border-radius: var(--r-lg);
+  border: 2px dashed var(--accent);
+  background: var(--accent-soft);
+  transition: background var(--transition-fast);
+}
+
+/* ── CDK global overrides (applied to :root, scoping not possible) ────────── */
+
+/* Smooth card return animation when dropped */
+.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+/* Remove default CDK styles we replace ourselves */
+.cdk-drag-preview {
+  box-shadow: none !important;
+}
+
+/* ── Task meta / priority / footer ──────────────────────────────────────── */
 
 .task-meta {
   display: flex;
@@ -252,20 +362,9 @@
   color: var(--text-muted);
 
   &--high,
-  &--urgent {
-    color: var(--danger);
-    background: var(--danger-soft);
-  }
-
-  &--medium {
-    color: var(--warning);
-    background: var(--warning-soft);
-  }
-
-  &--low {
-    color: var(--success);
-    background: var(--success-soft);
-  }
+  &--urgent { color: var(--danger);  background: var(--danger-soft); }
+  &--medium  { color: var(--warning); background: var(--warning-soft); }
+  &--low     { color: var(--success); background: var(--success-soft); }
 }
 
 .task-footer {
