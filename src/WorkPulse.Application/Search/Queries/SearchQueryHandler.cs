@@ -1,12 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Search.Dtos;
 
 namespace WorkPulse.Application.Search.Queries;

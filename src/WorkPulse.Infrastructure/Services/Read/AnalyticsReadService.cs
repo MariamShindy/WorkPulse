@@ -1,157 +1,288 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Analytics.Dtos;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
-using WorkPulse.Infrastructure.Persistence;
 
 namespace WorkPulse.Infrastructure.Services.Read;
 
 public sealed class AnalyticsReadService(ApplicationDbContext context) : IAnalyticsReadService
 {
-	public async Task<DashboardAnalyticsDto> GetDashboardAsync(Guid tenantId, Guid? teamId, DateOnly? from, DateOnly? to, CancellationToken ct)
+	public async Task<DashboardAnalyticsDto> GetDashboardAsync(
+		Guid tenantId,
+		Guid? teamId,
+		DateOnly? from,
+		DateOnly? to,
+		CancellationToken cancellationToken)
 	{
 		DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
-		DateOnly fromDate = from ?? today.AddDays(-30);
-		DateOnly toDate = to.GetValueOrDefault(today);
-		DateTime fromUtc = fromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-		DateTime toUtc = toDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-		IQueryable<TaskItem> tasks = context.TaskItems.AsNoTracking().Where((TaskItem t) => t.TenantId == tenantId);
-		if (teamId.HasValue)
-		{
-			tasks = tasks.Where((TaskItem t) => t.TeamId == ((Guid?)teamId).Value);
-		}
-		tasks = tasks.Where((TaskItem t) => t.CreatedAtUtc >= fromUtc && t.CreatedAtUtc <= toUtc);
-		HashSet<Guid> completedSet = (await (from s in context.WorkflowStates.AsNoTracking()
-			where s.TenantId == tenantId && (int)s.Type == 3
-			select s.Id).ToListAsync(ct)).ToHashSet();
-		int totalTasks = await tasks.CountAsync(ct);
-		int openTasks = await tasks.CountAsync((TaskItem t) => !completedSet.Contains(t.WorkflowStateId), ct);
-		int completedTasks = await tasks.CountAsync((TaskItem t) => completedSet.Contains(t.WorkflowStateId), ct);
-		int overdueTasks = await tasks.CountAsync((TaskItem t) => t.DueDate != null && t.DueDate < today && !completedSet.Contains(t.WorkflowStateId), ct);
-		int unassignedTasks = await tasks.CountAsync((TaskItem t) => t.AssigneeId == null, ct);
-		List<StatusCountDto> tasksByStatus = await (from t in tasks
-			join s in context.WorkflowStates.AsNoTracking() on t.WorkflowStateId equals s.Id
-			group t by new { s.Name, s.Type } into g
-			orderby g.Count() descending
-			select new StatusCountDto(g.Key.Name, g.Key.Type.ToString(), g.Count())).ToListAsync(ct);
-		List<PriorityCountDto> tasksByPriority = (await (from t in tasks
-			group t by t.Priority into g
-			select new
-			{
-				Key = g.Key,
-				Count = g.Count()
-			} into p
-			orderby p.Count descending
-			select p).ToListAsync(ct)).Select(p => new PriorityCountDto(p.Key.ToString(), p.Count)).ToList();
-		List<DailyCountDto> tasksCreatedByDay = (await (from t in tasks
-			group t by DateOnly.FromDateTime(t.CreatedAtUtc) into g
-			select new
-			{
-				Date = g.Key,
-				Count = g.Count()
-			} into d
-			orderby d.Date
-			select d).ToListAsync(ct)).Select(d => new DailyCountDto(d.Date, d.Count)).ToList();
-		List<DailyCountDto> tasksCompletedByDay = (await (from t in tasks
-			where completedSet.Contains(t.WorkflowStateId) && t.UpdatedAtUtc != null
-			group t by DateOnly.FromDateTime(t.UpdatedAtUtc.Value) into g
-			select new
-			{
-				Date = g.Key,
-				Count = g.Count()
-			} into d
-			orderby d.Date
-			select d).ToListAsync(ct)).Select(d => new DailyCountDto(d.Date, d.Count)).ToList();
-		var cycleSamples = await (from t in tasks
-			where completedSet.Contains(t.WorkflowStateId) && t.UpdatedAtUtc != null
-			select new { t.CreatedAtUtc, t.UpdatedAtUtc }).ToListAsync(ct);
-		double averageCycleTimeDays = ((cycleSamples.Count == 0) ? 0.0 : cycleSamples.Average(t => (t.UpdatedAtUtc.Value - t.CreatedAtUtc).TotalDays));
-		return new DashboardAnalyticsDto(totalTasks, openTasks, completedTasks, overdueTasks, unassignedTasks, tasksByStatus, tasksByPriority, tasksCreatedByDay, tasksCompletedByDay, averageCycleTimeDays);
+		IQueryable<TaskItem> tasks = BuildTaskQuery(tenantId, teamId, from, to);
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+
+		int totalTasks = await tasks.CountAsync(cancellationToken);
+		int openTasks = await tasks.CountAsync(task => !completedStateIds.Contains(task.WorkflowStateId), cancellationToken);
+		int completedTasks = await tasks.CountAsync(task => completedStateIds.Contains(task.WorkflowStateId), cancellationToken);
+		int overdueTasks = await tasks.CountAsync(
+			task => task.DueDate != null && task.DueDate < today && !completedStateIds.Contains(task.WorkflowStateId),
+			cancellationToken);
+		int unassignedTasks = await tasks.CountAsync(task => task.AssigneeId == null, cancellationToken);
+
+		List<StatusCountDto> tasksByStatus = await GetTasksByStatusAsync(tasks, cancellationToken);
+		List<PriorityCountDto> tasksByPriority = await GetTasksByPriorityAsync(tasks, cancellationToken);
+		List<DailyCountDto> tasksCreatedByDay = await GetTasksCreatedByDayAsync(tasks, cancellationToken);
+		List<DailyCountDto> tasksCompletedByDay = await GetTasksCompletedByDayAsync(tasks, completedStateIds, cancellationToken);
+		double averageCycleTimeDays = await GetAverageCycleTimeDaysAsync(tasks, completedStateIds, cancellationToken);
+
+		return new DashboardAnalyticsDto(
+			totalTasks,
+			openTasks,
+			completedTasks,
+			overdueTasks,
+			unassignedTasks,
+			tasksByStatus,
+			tasksByPriority,
+			tasksCreatedByDay,
+			tasksCompletedByDay,
+			averageCycleTimeDays);
 	}
 
-	public async Task<IReadOnlyList<TeamVelocityPointDto>> GetTeamVelocityAsync(Guid tenantId, Guid? teamId, int weeks, CancellationToken ct)
+	public async Task<IReadOnlyList<TeamVelocityPointDto>> GetTeamVelocityAsync(
+		Guid tenantId,
+		Guid? teamId,
+		int weeks,
+		CancellationToken cancellationToken)
 	{
-		DateOnly start = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-7 * (weeks - 1));
-		DateTime startUtc = start.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-		HashSet<Guid> completedSet = (await (from s in context.WorkflowStates.AsNoTracking()
-			where s.TenantId == tenantId && (int)s.Type == 3
-			select s.Id).ToListAsync(ct)).ToHashSet();
-		IQueryable<TaskItem> taskQuery = from t in context.TaskItems.AsNoTracking()
-			where t.TenantId == tenantId && t.CreatedAtUtc >= startUtc
-			select t;
+		DateOnly startDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-7 * (weeks - 1));
+		DateTime startUtc = startDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+
+		IQueryable<TaskItem> taskQuery = context.TaskItems.AsNoTracking()
+			.Where(task => task.TenantId == tenantId && task.CreatedAtUtc >= startUtc);
+
 		if (teamId.HasValue)
 		{
-			taskQuery = taskQuery.Where((TaskItem t) => t.TeamId == ((Guid?)teamId).Value);
+			taskQuery = taskQuery.Where(task => task.TeamId == teamId.Value);
 		}
-		var taskDates = await taskQuery.Select((TaskItem t) => new
+
+		var taskDates = await taskQuery.Select(task => new
 		{
-			Created = DateOnly.FromDateTime(t.CreatedAtUtc),
-			Completed = ((t.UpdatedAtUtc.HasValue && completedSet.Contains(t.WorkflowStateId)) ? ((DateOnly?)DateOnly.FromDateTime(t.UpdatedAtUtc.Value)) : ((DateOnly?)null))
-		}).ToListAsync(ct);
-		List<TeamVelocityPointDto> points = new List<TeamVelocityPointDto>();
-		for (int i = 0; i < weeks; i++)
+			Created = DateOnly.FromDateTime(task.CreatedAtUtc),
+			Completed = task.UpdatedAtUtc.HasValue && completedStateIds.Contains(task.WorkflowStateId)
+				? (DateOnly?)DateOnly.FromDateTime(task.UpdatedAtUtc.Value)
+				: null
+		}).ToListAsync(cancellationToken);
+
+		List<TeamVelocityPointDto> velocityPoints = [];
+		for (int weekIndex = 0; weekIndex < weeks; weekIndex++)
 		{
-			DateOnly weekStart = start.AddDays(i * 7);
+			DateOnly weekStart = startDate.AddDays(weekIndex * 7);
 			DateOnly weekEnd = weekStart.AddDays(6);
-			points.Add(new TeamVelocityPointDto(weekStart, taskDates.Count(t => t.Created >= weekStart && t.Created <= weekEnd), taskDates.Count(t => t.Completed >= weekStart && t.Completed <= weekEnd)));
+			velocityPoints.Add(new TeamVelocityPointDto(
+				weekStart,
+				taskDates.Count(task => task.Created >= weekStart && task.Created <= weekEnd),
+				taskDates.Count(task => task.Completed >= weekStart && task.Completed <= weekEnd)));
 		}
-		return points;
+
+		return velocityPoints;
 	}
 
-	public async Task<IReadOnlyList<AssigneeWorkloadDto>> GetAssigneeWorkloadAsync(Guid tenantId, Guid? teamId, CancellationToken ct)
+	public async Task<IReadOnlyList<AssigneeWorkloadDto>> GetAssigneeWorkloadAsync(
+		Guid tenantId,
+		Guid? teamId,
+		CancellationToken cancellationToken)
 	{
 		DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
-		HashSet<Guid> completedSet = (await (from s in context.WorkflowStates.AsNoTracking()
-			where s.TenantId == tenantId && (int)s.Type == 3
-			select s.Id).ToListAsync(ct)).ToHashSet();
-		IQueryable<TaskItem> tasks = from t in context.TaskItems.AsNoTracking()
-			where t.TenantId == tenantId && t.AssigneeId != null
-			select t;
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+
+		IQueryable<TaskItem> tasks = context.TaskItems.AsNoTracking()
+			.Where(task => task.TenantId == tenantId && task.AssigneeId != null);
+
 		if (teamId.HasValue)
 		{
-			tasks = tasks.Where((TaskItem t) => t.TeamId == ((Guid?)teamId).Value);
+			tasks = tasks.Where(task => task.TeamId == teamId.Value);
 		}
-		return (from t in await tasks.Select((TaskItem t) => new { t.AssigneeId, t.DueDate, t.WorkflowStateId }).ToListAsync(ct)
-			group t by t.AssigneeId.Value into g
-			select new AssigneeWorkloadDto(g.Key, g.Count(t => !completedSet.Contains(t.WorkflowStateId)), g.Count(t => t.DueDate.HasValue && t.DueDate < today && !completedSet.Contains(t.WorkflowStateId)), g.Count(t => completedSet.Contains(t.WorkflowStateId))) into x
-			orderby x.OpenTasks descending
-			select x).ToList();
+
+		var taskRows = await tasks
+			.Select(task => new { task.AssigneeId, task.DueDate, task.WorkflowStateId })
+			.ToListAsync(cancellationToken);
+
+		return taskRows
+			.GroupBy(task => task.AssigneeId!.Value)
+			.Select(group => new AssigneeWorkloadDto(
+				group.Key,
+				group.Count(task => !completedStateIds.Contains(task.WorkflowStateId)),
+				group.Count(task => task.DueDate.HasValue && task.DueDate < today && !completedStateIds.Contains(task.WorkflowStateId)),
+				group.Count(task => completedStateIds.Contains(task.WorkflowStateId))))
+			.OrderByDescending(workload => workload.OpenTasks)
+			.ToList();
 	}
 
-	public async Task<IReadOnlyList<ProjectProgressDto>> GetProjectProgressAsync(Guid tenantId, Guid? teamId, CancellationToken ct)
+	public async Task<IReadOnlyList<ProjectProgressDto>> GetProjectProgressAsync(
+		Guid tenantId,
+		Guid? teamId,
+		CancellationToken cancellationToken)
 	{
-		HashSet<Guid> completedSet = (await (from s in context.WorkflowStates.AsNoTracking()
-			where s.TenantId == tenantId && (int)s.Type == 3
-			select s.Id).ToListAsync(ct)).ToHashSet();
-		IQueryable<Project> projects = from p in context.Projects.AsNoTracking()
-			where p.TenantId == tenantId && !p.IsArchived
-			select p;
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+
+		IQueryable<Project> projects = context.Projects.AsNoTracking()
+			.Where(project => project.TenantId == tenantId && !project.IsArchived);
+
 		if (teamId.HasValue)
 		{
-			projects = projects.Where((Project p) => p.TeamId == ((Guid?)teamId).Value);
+			projects = projects.Where(project => project.TeamId == teamId.Value);
 		}
-		var projectList = await projects.Select((Project p) => new { p.Id, p.Key, p.Name }).ToListAsync(ct);
-		var taskRows = await (from t in context.TaskItems.AsNoTracking()
-			where t.TenantId == tenantId && t.ProjectId != null
+
+		var projectList = await projects
+			.Select(project => new { project.Id, project.Key, project.Name })
+			.ToListAsync(cancellationToken);
+
+		var taskRows = await context.TaskItems.AsNoTracking()
+			.Where(task => task.TenantId == tenantId && task.ProjectId != null)
+			.Select(task => new
+			{
+				ProjectId = task.ProjectId!.Value,
+				task.WorkflowStateId
+			})
+			.ToListAsync(cancellationToken);
+
+		return projectList
+			.Select(project =>
+			{
+				var projectTasks = taskRows.Where(task => task.ProjectId == project.Id).ToList();
+				int totalCount = projectTasks.Count;
+				int completedCount = projectTasks.Count(task => completedStateIds.Contains(task.WorkflowStateId));
+				double completionRate = totalCount == 0 ? 0.0 : (double)completedCount / totalCount;
+				return new ProjectProgressDto(project.Id, project.Key, project.Name, totalCount, completedCount, completionRate);
+			})
+			.OrderByDescending(progress => progress.CompletionRate)
+			.ToList();
+	}
+
+	private IQueryable<TaskItem> BuildTaskQuery(Guid tenantId, Guid? teamId, DateOnly? from, DateOnly? to)
+	{
+		// Only apply a created-at window when the caller asks for one.
+		// Default (no from/to) = all tasks in the tenant — otherwise older seeded work shows as zeros.
+		DateTime? fromUtc = from?.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+		DateTime? toUtc = to?.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+		IQueryable<TaskItem> tasks = context.TaskItems.AsNoTracking()
+			.Where(task => task.TenantId == tenantId);
+
+		if (teamId.HasValue)
+		{
+			tasks = tasks.Where(task => task.TeamId == teamId.Value);
+		}
+
+		if (fromUtc.HasValue)
+		{
+			tasks = tasks.Where(task => task.CreatedAtUtc >= fromUtc.Value);
+		}
+
+		if (toUtc.HasValue)
+		{
+			tasks = tasks.Where(task => task.CreatedAtUtc <= toUtc.Value);
+		}
+
+		return tasks;
+	}
+
+	private async Task<HashSet<Guid>> GetCompletedStateIdsAsync(Guid tenantId, CancellationToken cancellationToken)
+	{
+		List<Guid> stateIds = await context.WorkflowStates.AsNoTracking()
+			.Where(state => state.TenantId == tenantId && state.Type == WorkflowStateType.Completed)
+			.Select(state => state.Id)
+			.ToListAsync(cancellationToken);
+
+		return stateIds.ToHashSet();
+	}
+
+	private async Task<List<StatusCountDto>> GetTasksByStatusAsync(
+		IQueryable<TaskItem> tasks,
+		CancellationToken cancellationToken)
+	{
+		return await (
+			from task in tasks
+			join state in context.WorkflowStates.AsNoTracking() on task.WorkflowStateId equals state.Id
+			group task by new { state.Name, state.Type } into statusGroup
+			orderby statusGroup.Count() descending
+			select new StatusCountDto(statusGroup.Key.Name, statusGroup.Key.Type.ToString(), statusGroup.Count())
+		).ToListAsync(cancellationToken);
+	}
+
+	private static async Task<List<PriorityCountDto>> GetTasksByPriorityAsync(
+		IQueryable<TaskItem> tasks,
+		CancellationToken cancellationToken)
+	{
+		var priorityGroups = await (
+			from task in tasks
+			group task by task.Priority into priorityGroup
 			select new
 			{
-				ProjectId = t.ProjectId.Value,
-				WorkflowStateId = t.WorkflowStateId
-			}).ToListAsync(ct);
-		return (from p in projectList.Select(p =>
+				Priority = priorityGroup.Key,
+				Count = priorityGroup.Count()
+			}
+			into grouped
+			orderby grouped.Count descending
+			select grouped).ToListAsync(cancellationToken);
+
+		return priorityGroups
+			.Select(group => new PriorityCountDto(group.Priority.ToString(), group.Count))
+			.ToList();
+	}
+
+	private static async Task<List<DailyCountDto>> GetTasksCreatedByDayAsync(
+		IQueryable<TaskItem> tasks,
+		CancellationToken cancellationToken)
+	{
+		var dailyGroups = await (
+			from task in tasks
+			group task by DateOnly.FromDateTime(task.CreatedAtUtc) into dayGroup
+			select new
 			{
-				var list = taskRows.Where(t => t.ProjectId == p.Id).ToList();
-				int count = list.Count;
-				int num = list.Count(t => completedSet.Contains(t.WorkflowStateId));
-				return new ProjectProgressDto(p.Id, p.Key, p.Name, count, num, (count == 0) ? 0.0 : ((double)num / (double)count));
-			})
-			orderby p.CompletionRate descending
-			select p).ToList();
+				Date = dayGroup.Key,
+				Count = dayGroup.Count()
+			}
+			into grouped
+			orderby grouped.Date
+			select grouped).ToListAsync(cancellationToken);
+
+		return dailyGroups
+			.Select(group => new DailyCountDto(group.Date, group.Count))
+			.ToList();
+	}
+
+	private static async Task<List<DailyCountDto>> GetTasksCompletedByDayAsync(
+		IQueryable<TaskItem> tasks,
+		HashSet<Guid> completedStateIds,
+		CancellationToken cancellationToken)
+	{
+		var dailyGroups = await (
+			from task in tasks
+			where completedStateIds.Contains(task.WorkflowStateId) && task.UpdatedAtUtc != null
+			group task by DateOnly.FromDateTime(task.UpdatedAtUtc!.Value) into dayGroup
+			select new
+			{
+				Date = dayGroup.Key,
+				Count = dayGroup.Count()
+			}
+			into grouped
+			orderby grouped.Date
+			select grouped).ToListAsync(cancellationToken);
+
+		return dailyGroups
+			.Select(group => new DailyCountDto(group.Date, group.Count))
+			.ToList();
+	}
+
+	private static async Task<double> GetAverageCycleTimeDaysAsync(
+		IQueryable<TaskItem> tasks,
+		HashSet<Guid> completedStateIds,
+		CancellationToken cancellationToken)
+	{
+		var cycleSamples = await (
+			from task in tasks
+			where completedStateIds.Contains(task.WorkflowStateId) && task.UpdatedAtUtc != null
+			select new { task.CreatedAtUtc, task.UpdatedAtUtc }).ToListAsync(cancellationToken);
+
+		return cycleSamples.Count == 0
+			? 0.0
+			: cycleSamples.Average(sample => (sample.UpdatedAtUtc!.Value - sample.CreatedAtUtc).TotalDays);
 	}
 }

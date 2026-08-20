@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using WorkPulse.Domain.Common;
 
 namespace WorkPulse.Domain.Entities;

@@ -1,14 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Reports.Dtos;
 using WorkPulse.Application.Reports.Queries;
 

@@ -1,13 +1,6 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Analytics.Dtos;
 using WorkPulse.Application.Common;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Analytics.Queries.GetDashboardAnalytics;
 
@@ -21,8 +14,8 @@ public sealed class GetDashboardAnalyticsQueryHandler(IAnalyticsReadService anal
 			return tenantCheck.Error;
 		}
 		string cacheKey = CacheKeys.Dashboard(tenantContext.TenantId, request.TeamId, request.From, request.To);
-		DashboardAnalyticsDto cached = await cache.GetAsync<DashboardAnalyticsDto>(cacheKey, ct);
-		if ((object)cached != null)
+		DashboardAnalyticsDto? cached = await cache.GetAsync<DashboardAnalyticsDto>(cacheKey, ct);
+		if (cached is not null)
 		{
 			return Result.Success(cached);
 		}

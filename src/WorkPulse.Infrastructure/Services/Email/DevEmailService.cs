@@ -1,7 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using WorkPulse.Application.Abstractions;
 
 namespace WorkPulse.Infrastructure.Services.Email;
 

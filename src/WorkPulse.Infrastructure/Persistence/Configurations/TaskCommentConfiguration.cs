@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Infrastructure.Persistence.Configurations;
 

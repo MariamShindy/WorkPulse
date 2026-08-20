@@ -1,9 +1,5 @@
-using System;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Distributed;
-using WorkPulse.Application.Abstractions;
 
 namespace WorkPulse.Infrastructure.Services;
 
@@ -16,8 +12,12 @@ public sealed class CacheService(IDistributedCache cache) : ICacheService
 
 	public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default(CancellationToken))
 	{
-		byte[] bytes = await cache.GetAsync(key, ct);
-		return (T?)((bytes == null) ? ((object)default(T)) : ((object)JsonSerializer.Deserialize<T>(bytes, Options)));
+		byte[]? bytes = await cache.GetAsync(key, ct);
+		if (bytes == null)
+		{
+			return default;
+		}
+		return JsonSerializer.Deserialize<T>(bytes, Options);
 	}
 
 	public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null, CancellationToken ct = default(CancellationToken))

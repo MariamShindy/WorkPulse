@@ -1,9 +1,5 @@
-using System;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.Options;
 
 namespace WorkPulse.Infrastructure.Services;
@@ -16,7 +12,7 @@ public sealed class LocalFileStorageService(IOptions<FileStorageOptions> options
 	{
 		string storageKey = $"{Guid.NewGuid():N}_{SanitizeFileName(fileName)}";
 		string fullPath = GetFullPath(storageKey);
-		Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+		Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? _options.RootPath);
 		string result;
 		await using (FileStream fileStream = File.Create(fullPath))
 		{

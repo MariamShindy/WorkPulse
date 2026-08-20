@@ -1,15 +1,9 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Audit.Dtos;
 using WorkPulse.Application.Audit.Queries;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.API.Controllers;
 

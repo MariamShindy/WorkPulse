@@ -1,7 +1,5 @@
-using System;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using WorkPulse.Application.Abstractions;
 
 namespace WorkPulse.Infrastructure.Services;
 
@@ -13,7 +11,7 @@ public sealed class CurrentUserService(IHttpContextAccessor accessor) : ICurrent
 	{
 		get
 		{
-			string input = User?.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+			string? input = User?.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
 			Guid result;
 			return Guid.TryParse(input, out result) ? new Guid?(result) : ((Guid?)null);
 		}

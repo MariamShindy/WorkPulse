@@ -1,0 +1,37 @@
+# WorkPulse Kubernetes manifests (local cluster / Docker Desktop).
+#
+# From the repo root:
+#   docker build -t workpulse-api:latest -f src/WorkPulse.API/Dockerfile .
+#   docker build -t workpulse-web:latest client/workpulse-web
+#   kubectl apply -k k8s
+#
+# Access (Docker Desktop / Kind with NodePort):
+#   Web  http://localhost:30080
+#   API  http://localhost:30808   (health: /health, docs: /scalar/v1)
+# Demo login: demo@workpulse.local / Demo1234!
+#
+# Optional Ingress (requires an ingress controller + workpulse.local in hosts):
+#   kubectl apply -k k8s   # includes ingress.yaml
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: workpulse
+
+resources:
+  - namespace.yaml
+  - secret.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - redis.yaml
+  - api.yaml
+  - web.yaml
+  - ingress.yaml
+
+images:
+  - name: workpulse-api
+    newName: workpulse-api
+    newTag: latest
+  - name: workpulse-web
+    newName: workpulse-web
+    newTag: latest

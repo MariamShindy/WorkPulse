@@ -1,12 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Collaboration.Commands.MarkNotificationRead;
 
@@ -23,8 +14,8 @@ public sealed class MarkNotificationReadCommandHandler(IApplicationDbContext con
 		{
 			return Error.Unauthorized("Auth.Unauthorized", "Authentication is required.");
 		}
-		Notification notification = await context.Notifications.FirstOrDefaultAsync((Notification n) => n.Id == request.NotificationId && n.UserId == currentUser.UserId.Value, ct);
-		if (notification == null)
+		Notification? notification = await context.Notifications.FirstOrDefaultAsync((Notification n) => n.Id == request.NotificationId && n.UserId == currentUser.UserId.Value, ct);
+		if (notification is null)
 		{
 			return Error.NotFound("Collaboration.NotificationNotFound", "Notification not found.");
 		}

@@ -1,12 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Files.Commands.DeleteFile;
 
@@ -23,8 +14,8 @@ public sealed class DeleteFileCommandHandler(IApplicationDbContext context, IFil
 		{
 			return Error.Unauthorized("Auth.Unauthorized", "Authentication is required.");
 		}
-		StoredFile file = await context.StoredFiles.FirstOrDefaultAsync((StoredFile f) => f.Id == request.FileId, ct);
-		if (file == null)
+		StoredFile? file = await context.StoredFiles.FirstOrDefaultAsync((StoredFile f) => f.Id == request.FileId, ct);
+		if (file is null)
 		{
 			return Error.NotFound("Files.NotFound", "File not found.");
 		}

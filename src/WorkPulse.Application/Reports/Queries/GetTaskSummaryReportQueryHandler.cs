@@ -1,10 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Reports.Dtos;
 
 namespace WorkPulse.Application.Reports.Queries;

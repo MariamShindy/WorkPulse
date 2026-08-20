@@ -1,13 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Search.Dtos;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Infrastructure.Persistence;
 
 namespace WorkPulse.Infrastructure.Services.Read;
 

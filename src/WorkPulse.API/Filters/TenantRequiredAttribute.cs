@@ -1,8 +1,4 @@
-using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.DependencyInjection;
 using WorkPulse.Application.Abstractions;
 
 namespace WorkPulse.API.Filters;

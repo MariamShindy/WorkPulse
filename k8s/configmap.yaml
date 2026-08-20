@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: workpulse-config
+  labels:
+    app.kubernetes.io/name: workpulse
+    app.kubernetes.io/part-of: workpulse
+data:
+  ASPNETCORE_ENVIRONMENT: Development
+  ASPNETCORE_URLS: http://+:8080
+  JwtSettings__Issuer: WorkPulse
+  JwtSettings__Audience: WorkPulse
+  JwtSettings__ExpiryMinutes: "60"
+  JwtSettings__RefreshTokenExpiryDays: "30"
+  Cors__AllowedOrigins__0: http://localhost:30080
+  Cors__AllowedOrigins__1: http://localhost:4200
+  Cors__AllowedOrigins__2: http://workpulse.local
+  Cors__AllowedOrigins__3: http://localhost:30808
+  # Ollama on the host. Docker Desktop Kubernetes resolves host.docker.internal.
+  # Kind/minikube: use host.docker.internal, host.minikube.internal, or an in-cluster Ollama Service.
+  AiChat__Enabled: "true"
+  AiChat__BaseUrl: http://host.docker.internal:11434
+  AiChat__Model: llama3.1
+  AiChat__TimeoutSeconds: "120"
+  AiChat__MaxToolIterations: "5"

@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using WorkPulse.Application.Analytics.Dtos;
 
 namespace WorkPulse.Application.Abstractions.ReadServices;

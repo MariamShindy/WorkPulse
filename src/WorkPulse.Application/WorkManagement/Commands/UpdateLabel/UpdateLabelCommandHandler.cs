@@ -1,13 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.WorkManagement.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.WorkManagement.Commands.UpdateLabel;
 
@@ -20,8 +11,8 @@ public sealed class UpdateLabelCommandHandler(IApplicationDbContext context, ITe
 		{
 			return tenantCheck.Error;
 		}
-		Label label = await context.Labels.FirstOrDefaultAsync((Label l) => l.Id == request.LabelId, ct);
-		if (label == null)
+		Label? label = await context.Labels.FirstOrDefaultAsync((Label l) => l.Id == request.LabelId, ct);
+		if (label is null)
 		{
 			return Error.NotFound("Label.NotFound", "Label not found.");
 		}

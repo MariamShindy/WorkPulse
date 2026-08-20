@@ -1,10 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.AiChat.Dtos;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.AiChat.Queries.AskAiChat;
 

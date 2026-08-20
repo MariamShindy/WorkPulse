@@ -1,20 +1,12 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.Application.Auth.Commands.UpdateProfile;
 using WorkPulse.Application.Auth.Dtos;
 using WorkPulse.Application.Auth.Queries.GetProfile;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Organizations.Commands.SetCurrentCompany;
 using WorkPulse.Application.Organizations.Dtos;
 using WorkPulse.Application.Organizations.Queries.ListMyCompanies;
-
 using WorkPulse.API.Contracts.Auth;
-
 using WorkPulse.API.Contracts.Organizations;
 
 namespace WorkPulse.API.Controllers;

@@ -1,13 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Application.Auth.Commands.CancelInvitation;
 
@@ -20,8 +10,8 @@ public sealed class CancelInvitationCommandHandler(IApplicationDbContext context
 		{
 			return tenantCheck.Error;
 		}
-		UserInvitation invitation = await context.UserInvitations.FirstOrDefaultAsync((UserInvitation i) => i.Id == request.InvitationId, ct);
-		if (invitation == null)
+		UserInvitation? invitation = await context.UserInvitations.FirstOrDefaultAsync((UserInvitation i) => i.Id == request.InvitationId, ct);
+		if (invitation is null)
 		{
 			return Error.NotFound("Invitation.NotFound", "Invitation not found.");
 		}

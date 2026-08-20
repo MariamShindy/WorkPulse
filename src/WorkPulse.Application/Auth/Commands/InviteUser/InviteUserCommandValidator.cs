@@ -1,5 +1,4 @@
 using FluentValidation;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Application.Auth.Commands.InviteUser;
 

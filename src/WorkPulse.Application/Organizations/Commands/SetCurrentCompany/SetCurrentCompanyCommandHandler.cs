@@ -1,13 +1,4 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Organizations.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Organizations.Commands.SetCurrentCompany;
 
@@ -24,8 +15,8 @@ public sealed class SetCurrentCompanyCommandHandler(IApplicationDbContext contex
 		{
 			return Error.NotFound("Company.MemberNotFound", "You are not a member of this company.");
 		}
-		Company company = await context.Companies.AsNoTracking().FirstOrDefaultAsync((Company c) => c.Id == request.CompanyId && c.IsActive, ct);
-		if (company == null)
+		Company? company = await context.Companies.AsNoTracking().FirstOrDefaultAsync((Company c) => c.Id == request.CompanyId && c.IsActive, ct);
+		if (company is null)
 		{
 			return Error.NotFound("Company.NotFound", "Company not found.");
 		}

@@ -1,9 +1,6 @@
-using System;
-using MediatR;
 using WorkPulse.Application.Audit.Dtos;
 using WorkPulse.Application.Behaviors;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Audit.Queries;
 

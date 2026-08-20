@@ -1,13 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Collaboration.Dtos;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Collaboration.Commands.UpdateTaskComment;
 
@@ -24,8 +15,8 @@ public sealed class UpdateTaskCommentCommandHandler(IApplicationDbContext contex
 		{
 			return Error.Unauthorized("Auth.Unauthorized", "Authentication is required.");
 		}
-		TaskComment comment = await context.TaskComments.FirstOrDefaultAsync((TaskComment c) => c.Id == request.CommentId, ct);
-		if (comment == null)
+		TaskComment? comment = await context.TaskComments.FirstOrDefaultAsync((TaskComment c) => c.Id == request.CommentId, ct);
+		if (comment is null)
 		{
 			return Error.NotFound("Collaboration.CommentNotFound", "Comment not found.");
 		}

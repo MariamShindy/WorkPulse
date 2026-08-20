@@ -1,14 +1,6 @@
-using System;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Collaboration.Services;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Infrastructure.Services;
 
@@ -71,7 +63,7 @@ public sealed class AutomationEngine(IApplicationDbContext context, ITaskCollabo
 		{
 			if (root.TryGetProperty("priority", out var priorityEl) && Enum.TryParse<TaskPriority>(priorityEl.GetString(), ignoreCase: true, out var priority))
 			{
-				TaskItem tracked2 = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == task.Id, ct);
+				TaskItem? tracked2 = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == task.Id, ct);
 				if (tracked2 != null)
 				{
 					tracked2.Priority = priority;
@@ -83,7 +75,7 @@ public sealed class AutomationEngine(IApplicationDbContext context, ITaskCollabo
 		{
 			if (root.TryGetProperty("userId", out var userEl))
 			{
-				TaskItem tracked = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == task.Id, ct);
+				TaskItem? tracked = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == task.Id, ct);
 				if (tracked != null)
 				{
 					tracked.AssigneeId = userEl.GetGuid();

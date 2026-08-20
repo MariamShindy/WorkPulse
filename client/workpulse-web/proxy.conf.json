@@ -2,12 +2,14 @@
   "/api": {
     "target": "http://localhost:8080",
     "secure": false,
-    "changeOrigin": true
+    "changeOrigin": true,
+    "timeout": 180000
   },
   "/hubs": {
     "target": "http://localhost:8080",
     "secure": false,
     "changeOrigin": true,
-    "ws": true
+    "ws": true,
+    "timeout": 180000
   }
 }

@@ -1,14 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Projects.Commands.ReorderWorkflowStates;
 
@@ -21,8 +10,8 @@ public sealed class ReorderWorkflowStatesCommandHandler(IApplicationDbContext co
 		{
 			return tenantCheck.Error;
 		}
-		Workflow workflow = await context.Workflows.AsNoTracking().FirstOrDefaultAsync((Workflow w) => w.TeamId == request.TeamId && w.IsDefault, ct);
-		if (workflow == null)
+		Workflow? workflow = await context.Workflows.AsNoTracking().FirstOrDefaultAsync((Workflow w) => w.TeamId == request.TeamId && w.IsDefault, ct);
+		if (workflow is null)
 		{
 			return Error.NotFound("Workflow.NotFound", "Workflow not found.");
 		}
@@ -30,8 +19,8 @@ public sealed class ReorderWorkflowStatesCommandHandler(IApplicationDbContext co
 		int i;
 		for (i = 0; i < request.StateIdsInOrder.Count; i++)
 		{
-			WorkflowState state = states.FirstOrDefault((WorkflowState s) => s.Id == request.StateIdsInOrder[i]);
-			if (state != null)
+			WorkflowState? state = states.FirstOrDefault((WorkflowState s) => s.Id == request.StateIdsInOrder[i]);
+			if (state is not null)
 			{
 				state.Position = i;
 			}

@@ -42,6 +42,13 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=workpulse;Username=workpulse;Password=workpulse
       ConnectionStrings__Redis: redis:6379
+      # Ollama runs on the host — localhost inside the container is wrong.
+      AiChat__Enabled: "true"
+      AiChat__BaseUrl: http://host.docker.internal:11434
+      AiChat__Model: llama3.1
+      AiChat__TimeoutSeconds: "120"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     depends_on:

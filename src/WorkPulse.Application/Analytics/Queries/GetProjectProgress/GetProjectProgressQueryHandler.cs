@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Analytics.Dtos;
 using WorkPulse.Application.Common;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Analytics.Queries.GetProjectProgress;
 
@@ -22,8 +14,8 @@ public sealed class GetProjectProgressQueryHandler(IAnalyticsReadService analyti
 			return tenantCheck.Error;
 		}
 		string cacheKey = CacheKeys.ProjectProgress(tenantContext.TenantId, request.TeamId);
-		IReadOnlyList<ProjectProgressDto> cached = await cache.GetAsync<IReadOnlyList<ProjectProgressDto>>(cacheKey, ct);
-		if (cached != null)
+		IReadOnlyList<ProjectProgressDto>? cached = await cache.GetAsync<IReadOnlyList<ProjectProgressDto>>(cacheKey, ct);
+		if (cached is not null)
 		{
 			return Result.Success(cached);
 		}

@@ -1,8 +1,5 @@
-using System;
-using MediatR;
 using WorkPulse.Application.Analytics.Dtos;
 using WorkPulse.Application.Behaviors;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Analytics.Queries.GetDashboardAnalytics;
 

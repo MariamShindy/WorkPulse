@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Abstractions.Persistence;
 

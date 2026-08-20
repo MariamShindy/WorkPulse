@@ -1,13 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Organizations.Commands.AddCompanyMember;
 using WorkPulse.Application.Organizations.Commands.CreateCompany;
 using WorkPulse.Application.Organizations.Commands.UpdateCompany;
@@ -15,7 +9,6 @@ using WorkPulse.Application.Organizations.Commands.UpdateCompanyMember;
 using WorkPulse.Application.Organizations.Dtos;
 using WorkPulse.Application.Organizations.Queries.GetCompany;
 using WorkPulse.Application.Organizations.Queries.ListCompanyMembers;
-
 using WorkPulse.API.Contracts.Organizations;
 
 namespace WorkPulse.API.Controllers;

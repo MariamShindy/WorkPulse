@@ -1,13 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Commands.ArchiveProject;
 using WorkPulse.Application.Projects.Commands.CreateProject;
 using WorkPulse.Application.Projects.Commands.UpdateProject;
@@ -15,7 +9,6 @@ using WorkPulse.Application.Projects.Dtos;
 using WorkPulse.Application.Projects.Queries.GetProject;
 using WorkPulse.Application.Projects.Queries.ListProjects;
 using WorkPulse.Domain.Enums;
-
 using WorkPulse.API.Contracts.Projects;
 
 namespace WorkPulse.API.Controllers;

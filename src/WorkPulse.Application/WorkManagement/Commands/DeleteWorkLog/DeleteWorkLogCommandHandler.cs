@@ -1,13 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.WorkManagement.Commands.DeleteWorkLog;
 
@@ -20,12 +10,12 @@ public sealed class DeleteWorkLogCommandHandler(IApplicationDbContext context, I
 		{
 			return tenantCheck.Error;
 		}
-		WorkLog workLog = await context.WorkLogs.FirstOrDefaultAsync((WorkLog w) => w.Id == request.WorkLogId, ct);
-		if (workLog == null)
+		WorkLog? workLog = await context.WorkLogs.FirstOrDefaultAsync((WorkLog w) => w.Id == request.WorkLogId, ct);
+		if (workLog is null)
 		{
 			return Error.NotFound("WorkLog.NotFound", "Work log not found.");
 		}
-		TaskItem task = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == workLog.TaskId, ct);
+		TaskItem? task = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == workLog.TaskId, ct);
 		if (task != null)
 		{
 			task.LoggedHours = Math.Max(0m, task.LoggedHours - workLog.Hours);

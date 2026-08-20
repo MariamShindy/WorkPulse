@@ -1,13 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Application.Collaboration.Services;
 

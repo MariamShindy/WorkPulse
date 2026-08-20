@@ -1,9 +1,4 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Collaboration.Commands.AddTaskComment;
@@ -16,8 +11,6 @@ using WorkPulse.Application.Collaboration.Queries.ListNotifications;
 using WorkPulse.Application.Collaboration.Queries.ListTaskActivity;
 using WorkPulse.Application.Collaboration.Queries.ListTaskComments;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
-
 using WorkPulse.API.Contracts.Collaboration;
 
 namespace WorkPulse.API.Controllers;

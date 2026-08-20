@@ -23,6 +23,7 @@ logs/
 
 ## Docker
 .dockerignore
+!client/workpulse-web/.dockerignore
 
 ## OS
 .DS_Store
@@ -41,3 +42,6 @@ node_modules/
 dist/
 .angular/
 npm-debug.log*
+
+## Cursor
+.cursor/

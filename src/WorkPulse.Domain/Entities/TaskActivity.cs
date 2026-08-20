@@ -1,4 +1,3 @@
-using System;
 using WorkPulse.Domain.Common;
 using WorkPulse.Domain.Enums;
 

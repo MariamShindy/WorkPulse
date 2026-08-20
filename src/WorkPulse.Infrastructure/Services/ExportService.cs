@@ -1,19 +1,11 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using ClosedXML.Excel;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Reports.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Infrastructure.Services;
 
@@ -36,7 +28,7 @@ public sealed class ExportService(IApplicationDbContext context, IReportsReadSer
 			buffer[6] = row.AssigneeId?.ToString() ?? string.Empty;
 			buffer[7] = row.DueDate?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty;
 			buffer[8] = row.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture);
-			sb.AppendLine(string.Join(',', (ReadOnlySpan<string?>)buffer));
+			sb.AppendLine(string.Join(',', (ReadOnlySpan<string>)buffer));
 		}
 		return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "tasks.csv");
 	}

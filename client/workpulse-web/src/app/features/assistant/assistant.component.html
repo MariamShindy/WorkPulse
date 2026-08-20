@@ -37,8 +37,8 @@
             <div class="typing" aria-label="Assistant is thinking">
               <span></span><span></span><span></span>
             </div>
-          } @else {
-            <p class="content">{{ entry.content }}</p>
+          } @else if (entry.role === 'assistant') {
+            <div class="content" [innerHTML]="entry.content | assistantMarkdown"></div>
             @if (entry.toolsUsed && entry.toolsUsed.length > 0) {
               <div class="tools" aria-label="Data sources used">
                 @for (tool of entry.toolsUsed; track tool) {
@@ -46,6 +46,8 @@
                 }
               </div>
             }
+          } @else {
+            <p class="content content-plain">{{ entry.content }}</p>
           }
         </div>
       </div>

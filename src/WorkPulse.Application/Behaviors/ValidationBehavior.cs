@@ -1,13 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using FluentValidation;
 using FluentValidation.Results;
-using MediatR;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Behaviors;
 
@@ -39,6 +32,6 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
 		}
 		Type type = typeof(TResult).GetGenericArguments()[0];
 		MethodInfo methodInfo = typeof(Result).GetMethods().First((MethodInfo m) => m.Name == "Failure" && m.IsGenericMethod).MakeGenericMethod(type);
-		return (TResult)methodInfo.Invoke(null, new object[1] { errors.First() });
+		return (TResult)methodInfo.Invoke(null, new object[1] { errors.First() })!;
 	}
 }

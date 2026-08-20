@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.API.Contracts.Projects;

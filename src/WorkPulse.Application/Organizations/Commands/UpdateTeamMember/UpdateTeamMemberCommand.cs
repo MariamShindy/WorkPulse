@@ -1,8 +1,4 @@
-using System;
-using MediatR;
 using WorkPulse.Application.Behaviors;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Application.Organizations.Commands.UpdateTeamMember;
 

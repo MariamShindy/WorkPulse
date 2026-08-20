@@ -1,4 +1,3 @@
-using System;
 using FluentValidation;
 
 namespace WorkPulse.Application.WorkManagement.Commands.CreateSprint;

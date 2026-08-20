@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Analytics.Dtos;
 using WorkPulse.Application.Common;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Analytics.Queries.GetAssigneeWorkload;
 
@@ -22,8 +14,8 @@ public sealed class GetAssigneeWorkloadQueryHandler(IAnalyticsReadService analyt
 			return tenantCheck.Error;
 		}
 		string cacheKey = CacheKeys.AssigneeWorkload(tenantContext.TenantId, request.TeamId);
-		IReadOnlyList<AssigneeWorkloadDto> cached = await cache.GetAsync<IReadOnlyList<AssigneeWorkloadDto>>(cacheKey, ct);
-		if (cached != null)
+		IReadOnlyList<AssigneeWorkloadDto>? cached = await cache.GetAsync<IReadOnlyList<AssigneeWorkloadDto>>(cacheKey, ct);
+		if (cached is not null)
 		{
 			return Result.Success(cached);
 		}

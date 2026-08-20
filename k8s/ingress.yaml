@@ -1,0 +1,69 @@
+# Optional. Requires an ingress controller (e.g. ingress-nginx).
+# Add to your hosts file: 127.0.0.1 workpulse.local
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: workpulse
+  labels:
+    app.kubernetes.io/name: workpulse
+    app.kubernetes.io/part-of: workpulse
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "180"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "180"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/websocket-services: "api"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: workpulse.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+          - path: /hubs
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+          - path: /hangfire
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+          - path: /scalar
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+          - path: /openapi
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
