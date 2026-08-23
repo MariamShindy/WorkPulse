@@ -73,12 +73,23 @@ public sealed class ReportsReadService(ApplicationDbContext context) : IReportsR
 			tasksQuery = tasksQuery.Where(task => task.TeamId == filter.TeamId.Value);
 		}
 
-		var taskRows = await tasksQuery
-			.Select(task => new { task.TeamId, task.WorkflowStateId, task.DueDate, task.CreatedAtUtc, task.UpdatedAtUtc })
+		List<TaskMetricsRow> taskRows = await tasksQuery
+			.Select(task => new TaskMetricsRow(
+				task.TeamId,
+				task.WorkflowStateId,
+				task.DueDate,
+				task.CreatedAtUtc,
+				task.UpdatedAtUtc))
 			.ToListAsync(cancellationToken);
 
 		List<TeamPerformanceRowDto> performanceRows = teams
-			.Select(team => BuildTeamPerformanceRow(team.Id, team.Key, team.Name, taskRows, completedStateIds, today))
+			.Select(team => BuildTeamPerformanceRow(
+				team.Id,
+				team.Key,
+				team.Name,
+				taskRows,
+				completedStateIds,
+				today))
 			.OrderByDescending(row => row.CompletionRate)
 			.ToList();
 
@@ -89,24 +100,35 @@ public sealed class ReportsReadService(ApplicationDbContext context) : IReportsR
 		Guid teamId,
 		string teamKey,
 		string teamName,
-		IReadOnlyList<(Guid TeamId, Guid WorkflowStateId, DateOnly? DueDate, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc)>? _,
+		IReadOnlyList<TaskMetricsRow> taskRows,
 		HashSet<Guid> completedStateIds,
 		DateOnly today)
 	{
-		// Overload placeholder avoided — use generic anonymous projection via dynamic call site below.
-		throw new NotSupportedException();
-	}
+		List<TaskMetricsRow> teamTasks = taskRows.Where(task => task.TeamId == teamId).ToList();
+		int totalTasks = teamTasks.Count;
+		int completedTasks = teamTasks.Count(task => completedStateIds.Contains(task.WorkflowStateId));
+		int overdueTasks = teamTasks.Count(task =>
+			task.DueDate.HasValue &&
+			task.DueDate < today &&
+			!completedStateIds.Contains(task.WorkflowStateId));
 
-	private TeamPerformanceRowDto BuildTeamPerformanceRow(
-		Guid teamId,
-		string teamKey,
-		string teamName,
-		IEnumerable<dynamic> taskRows,
-		HashSet<Guid> completedStateIds,
-		DateOnly today)
-	{
-		// Replaced below with typed version
-		throw new NotSupportedException();
+		List<double> cycleTimes = teamTasks
+			.Where(task => completedStateIds.Contains(task.WorkflowStateId) && task.UpdatedAtUtc.HasValue)
+			.Select(task => (task.UpdatedAtUtc!.Value - task.CreatedAtUtc).TotalDays)
+			.ToList();
+
+		double completionRate = totalTasks == 0 ? 0.0 : (double)completedTasks / totalTasks;
+		double averageCycleTimeDays = cycleTimes.Count == 0 ? 0.0 : cycleTimes.Average();
+
+		return new TeamPerformanceRowDto(
+			teamId,
+			teamKey,
+			teamName,
+			totalTasks,
+			completedTasks,
+			overdueTasks,
+			completionRate,
+			averageCycleTimeDays);
 	}
 
 	private IQueryable<TaskItem> ApplyTaskFilters(Guid tenantId, ReportFilter filter)

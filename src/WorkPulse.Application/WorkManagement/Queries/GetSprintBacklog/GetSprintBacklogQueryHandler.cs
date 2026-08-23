@@ -40,6 +40,11 @@ public sealed class GetSprintBacklogQueryHandler(
 			.Select(row => row.Task.Id)
 			.ToListAsync(cancellationToken);
 
+		if (pageTaskIds.Count == 0)
+		{
+			return new PagedList<TaskItemDto>([], request.Pagination.Page, request.Pagination.PageSize, totalCount);
+		}
+
 		Dictionary<Guid, IReadOnlyList<Guid>> assigneesByTask = await LoadAssigneesByTaskAsync(pageTaskIds, cancellationToken);
 		List<TaskItemDto> tasks = await MapTasksAsync(backlogQuery, pageTaskIds, assigneesByTask, cancellationToken);
 
@@ -122,11 +127,16 @@ public sealed class GetSprintBacklogQueryHandler(
 				row.Task.CreatedAtUtc))
 			.ToListAsync(cancellationToken);
 
-		return tasks
+		Dictionary<Guid, TaskItemDto> tasksById = tasks
 			.Select(task => task with
 			{
 				AssigneeIds = assigneesByTask.GetValueOrDefault(task.Id, Array.Empty<Guid>())
 			})
+			.ToDictionary(task => task.Id);
+
+		return pageTaskIds
+			.Where(tasksById.ContainsKey)
+			.Select(taskId => tasksById[taskId])
 			.ToList();
 	}
 }

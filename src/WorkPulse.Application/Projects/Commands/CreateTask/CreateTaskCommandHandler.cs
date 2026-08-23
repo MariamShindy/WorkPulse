@@ -85,8 +85,11 @@ public sealed class CreateTaskCommandHandler(
 	{
 		if (request.WorkflowStateId.HasValue)
 		{
-			WorkflowState? workflowState = await context.WorkflowStates.AsNoTracking()
-				.FirstOrDefaultAsync(state => state.Id == request.WorkflowStateId, cancellationToken);
+			WorkflowState? workflowState = await (
+				from workflow in context.Workflows.AsNoTracking()
+				join state in context.WorkflowStates.AsNoTracking() on workflow.Id equals state.WorkflowId
+				where workflow.TeamId == request.TeamId && state.Id == request.WorkflowStateId
+				select state).FirstOrDefaultAsync(cancellationToken);
 
 			return workflowState is null
 				? Error.NotFound(WorkflowErrors.StateNotFoundCode, "Workflow state not found.")
