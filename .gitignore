@@ -39,12 +39,6 @@ dist/
 .angular/
 npm-debug.log*
 
-## Playwright
-client/workpulse-web/test-results/
-client/workpulse-web/playwright-report/
-client/workpulse-web/blob-report/
-client/workpulse-web/playwright/
-
 ## Cursor
 .cursor/
 
