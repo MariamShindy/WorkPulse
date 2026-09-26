@@ -21,10 +21,6 @@ secrets.json
 logs/
 *.log
 
-## Docker
-.dockerignore
-!client/workpulse-web/.dockerignore
-
 ## OS
 .DS_Store
 Thumbs.db
@@ -43,5 +39,14 @@ dist/
 .angular/
 npm-debug.log*
 
+## Playwright
+client/workpulse-web/test-results/
+client/workpulse-web/playwright-report/
+client/workpulse-web/blob-report/
+client/workpulse-web/playwright/
+
 ## Cursor
 .cursor/
+
+# Local file-storage root (FileStorageOptions.RootPath) — runtime artifact
+uploads/
