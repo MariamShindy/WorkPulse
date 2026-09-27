@@ -63,3 +63,43 @@
   height: 300px;
   border-radius: 1rem;
 }
+
+.inline-export {
+  margin-left: auto;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.chart-wrap {
+  h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+  }
+}
+
+.chart-canvas {
+  position: relative;
+  height: 280px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  min-width: 120px;
+  text-align: center;
+}

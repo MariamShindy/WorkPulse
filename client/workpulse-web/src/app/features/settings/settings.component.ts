@@ -13,6 +13,7 @@ import {
   PagedList
 } from '../../core/models';
 import { PaginatorComponent } from '../../shared/paginator/paginator.component';
+import { apiErrorMessage } from '../../core/utils/api-error';
 
 type SettingsTab = 'profile' | 'company' | 'members';
 
@@ -27,7 +28,7 @@ export class SettingsComponent implements OnInit {
   private readonly users = inject(UsersService);
   private readonly companies = inject(CompaniesService);
   private readonly invitations = inject(InvitationsService);
-  private readonly tenant = inject(TenantService);
+  readonly tenant = inject(TenantService);
   private readonly fb = inject(FormBuilder);
 
   readonly roles = COMPANY_ROLES;
@@ -71,6 +72,12 @@ export class SettingsComponent implements OnInit {
         })
     });
 
+    // The workspace, member and invitation data all feed admin-only panels — and
+    // GET /api/invitations is admin-gated, so a member requesting it just logs a 403.
+    if (!this.tenant.isAdmin()) {
+      return;
+    }
+
     this.companies.getCurrent().subscribe({
       next: (company) => {
         this.company.set(company);
@@ -87,6 +94,12 @@ export class SettingsComponent implements OnInit {
   }
 
   selectTab(tab: SettingsTab): void {
+    // The workspace and member panels are admin-only; ignore a request for them otherwise.
+    if (tab !== 'profile' && !this.tenant.isAdmin()) {
+      this.tab.set('profile');
+      return;
+    }
+
     this.tab.set(tab);
     this.error.set(null);
     this.success.set(null);
@@ -106,7 +119,7 @@ export class SettingsComponent implements OnInit {
         this.savingProfile.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to update profile.');
+        this.error.set(apiErrorMessage(err, 'Failed to update profile.'));
         this.savingProfile.set(false);
       }
     });
@@ -130,7 +143,7 @@ export class SettingsComponent implements OnInit {
           this.savingCompany.set(false);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to update workspace.');
+          this.error.set(apiErrorMessage(err, 'Failed to update workspace.'));
           this.savingCompany.set(false);
         }
       });
@@ -148,7 +161,7 @@ export class SettingsComponent implements OnInit {
       next: () =>
         this.members.update((p) =>
           p ? { ...p, items: p.items.map((m) => (m.id === member.id ? { ...m, role } : m)) } : p),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to update member.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update member.'))
     });
   }
 
@@ -164,7 +177,7 @@ export class SettingsComponent implements OnInit {
                   m.id === member.id ? { ...m, isActive: !member.isActive } : m)
               }
             : p),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to update member.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update member.'))
     });
   }
 
@@ -192,7 +205,7 @@ export class SettingsComponent implements OnInit {
         this.inviting.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to send invitation.');
+        this.error.set(apiErrorMessage(err, 'Failed to send invitation.'));
         this.inviting.set(false);
       }
     });
@@ -202,7 +215,7 @@ export class SettingsComponent implements OnInit {
     this.invitations.cancel(invitation.id).subscribe({
       next: () =>
         this.invitationList.update((list) => list.filter((i) => i.id !== invitation.id)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to cancel invitation.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to cancel invitation.'))
     });
   }
 

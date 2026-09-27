@@ -2,10 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "WorkPulse Web",
+      "name": "workpulse-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
-      "cwd": "client/workpulse-web",
+      "runtimeArgs": ["--prefix", "client/workpulse-web", "start"],
       "port": 4200
     }
   ]

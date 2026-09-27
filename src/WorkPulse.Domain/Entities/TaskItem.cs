@@ -45,5 +45,9 @@ public sealed class TaskItem : TenantEntity
 
 	public Guid? AssignedTeamId { get; set; }
 
+	public DateTime? StartedAtUtc { get; set; }
+
+	public DateTime? CompletedAtUtc { get; set; }
+
 	public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }

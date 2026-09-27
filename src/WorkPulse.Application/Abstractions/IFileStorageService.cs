@@ -7,6 +7,4 @@ public interface IFileStorageService
 	Task<Stream> DownloadAsync(string fileKey, CancellationToken ct = default(CancellationToken));
 
 	Task DeleteAsync(string fileKey, CancellationToken ct = default(CancellationToken));
-
-	string GetPublicUrl(string fileKey);
 }

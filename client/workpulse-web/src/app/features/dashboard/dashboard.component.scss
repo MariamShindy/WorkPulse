@@ -107,6 +107,22 @@
   user-select: none;
 }
 
+.stat-mark {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: var(--r-full);
+  opacity: 0.85;
+
+  &--accent { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  &--info { background: var(--info); box-shadow: 0 0 0 4px var(--info-soft); }
+  &--success { background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
+  &--danger { background: var(--danger); box-shadow: 0 0 0 4px var(--danger-soft); }
+  &--warning { background: var(--warning); box-shadow: 0 0 0 4px var(--warning-soft); }
+}
+
 /* ── Charts grid ─────────────────────────────────────────────────────────── */
 
 .charts-grid {

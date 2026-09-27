@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.RateLimiting;
 using Scalar.AspNetCore;
 using Serilog;
 using System.Text;
 using WorkPulse.API.Authorization;
+using WorkPulse.API.Configuration;
 using WorkPulse.API.Hubs;
 using WorkPulse.API.Middleware;
 using WorkPulse.API.Services;
@@ -34,6 +36,11 @@ builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // ── Authentication / JWT ─────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+
+// Fails fast on a missing, short, or still-placeholder signing key rather than starting up
+// and accepting forgeable tokens.
+var jwtSecretKey = JwtSettingsValidation.ValidateAndGetSecretKey(builder.Configuration, builder.Environment);
+
 builder.Services
     .AddAuthentication(options =>
     {
@@ -51,7 +58,7 @@ builder.Services
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
+                Encoding.UTF8.GetBytes(jwtSecretKey)),
             ClockSkew = TimeSpan.Zero
         };
 
@@ -95,6 +102,8 @@ builder.Services.AddScoped<IAuthorizationHandler, CompanyRoleAuthorizationHandle
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITaskRealtimeNotifier, RealtimeNotifier>();
+builder.Services.AddScoped<IHubTenantAuthorizer, HubTenantAuthorizer>();
+builder.Services.AddWorkPulseRateLimiting();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddOpenApi();
@@ -155,7 +164,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+if (!app.Environment.IsDevelopment())
+{
+    // HSTS is meaningless over plain HTTP in local development.
+    app.UseHsts();
+}
+
 app.UseCors("AllowFrontend");
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseRateLimiter();
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<TenantResolutionMiddleware>();
@@ -168,7 +187,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
-        Authorization = [] // TODO: add auth filter before production
+        Authorization = [new HangfireDashboardAuthorizationFilter()]
     });
     app.Services.ScheduleRecurringJobs();
 }

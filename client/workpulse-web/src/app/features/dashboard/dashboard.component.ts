@@ -1,20 +1,27 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, finalize, switchMap, tap } from 'rxjs/operators';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { TeamsService } from '../../core/services/teams.service';
 import { DashboardAnalytics, ProjectProgress, Team, TeamVelocityPoint } from '../../core/models';
+import { apiErrorMessage } from '../../core/utils/api-error';
+import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, EmptyStateComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit {
   private readonly analytics = inject(AnalyticsService);
   private readonly teamsService = inject(TeamsService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly reload$ = new Subject<string | undefined>();
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -31,40 +38,48 @@ export class DashboardComponent implements OnInit {
   readonly maxVelocity = computed(() =>
     Math.max(1, ...this.velocity().flatMap((v) => [v.created, v.completed])));
 
+  constructor() {
+    this.reload$
+      .pipe(
+        tap(() => {
+          this.loading.set(true);
+          this.error.set(null);
+        }),
+        switchMap((teamId) =>
+          forkJoin({
+            dashboard: this.analytics.dashboard({ teamId }),
+            velocity: this.analytics.velocity(teamId, 8),
+            projectProgress: this.analytics.projectProgress(teamId)
+          }).pipe(
+            catchError((err) => {
+              this.error.set(apiErrorMessage(err, 'Failed to load analytics.'));
+              return of(null);
+            }),
+            finalize(() => this.loading.set(false))
+          )
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((result) => {
+        if (!result) return;
+        this.data.set(result.dashboard);
+        this.velocity.set(result.velocity);
+        this.projectProgress.set(result.projectProgress);
+      });
+  }
+
   ngOnInit(): void {
-    this.teamsService.list().subscribe({
-      next: (res) => this.teams.set(res.items)
-    });
-    this.load();
+    this.teamsService
+      .list()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => this.teams.set(res.items)
+      });
+    this.reload$.next(undefined);
   }
 
   selectTeam(teamId: string): void {
     this.selectedTeamId.set(teamId || null);
-    this.load();
-  }
-
-  private load(): void {
-    this.loading.set(true);
-    this.error.set(null);
-    const teamId = this.selectedTeamId() ?? undefined;
-
-    this.analytics.dashboard({ teamId }).subscribe({
-      next: (data) => {
-        this.data.set(data);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to load analytics.');
-        this.loading.set(false);
-      }
-    });
-
-    this.analytics.velocity(teamId, 8).subscribe({
-      next: (points) => this.velocity.set(points)
-    });
-
-    this.analytics.projectProgress(teamId).subscribe({
-      next: (progress) => this.projectProgress.set(progress)
-    });
+    this.reload$.next(this.selectedTeamId() ?? undefined);
   }
 }

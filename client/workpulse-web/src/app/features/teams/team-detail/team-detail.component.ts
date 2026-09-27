@@ -14,6 +14,7 @@ import {
   Workflow
 } from '../../../core/models';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-team-detail',
@@ -99,7 +100,7 @@ export class TeamDetailComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to load team.');
+        this.error.set(apiErrorMessage(err, 'Failed to load team.'));
         this.loading.set(false);
       }
     });
@@ -126,7 +127,7 @@ export class TeamDetailComponent implements OnInit {
         this.saving.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to update team.');
+        this.error.set(apiErrorMessage(err, 'Failed to update team.'));
         this.saving.set(false);
       }
     });
@@ -136,7 +137,7 @@ export class TeamDetailComponent implements OnInit {
     this.confirmArchive.set(false);
     this.teamsService.archive(this.teamId()).subscribe({
       next: () => this.router.navigate(['/teams']),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to archive team.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to archive team.'))
     });
   }
 
@@ -150,7 +151,7 @@ export class TeamDetailComponent implements OnInit {
         this.members.update((list) => [...list, member]);
         this.memberForm.reset({ userId: '', role: 'Member' });
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to add member.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to add member.'))
     });
   }
 
@@ -159,14 +160,14 @@ export class TeamDetailComponent implements OnInit {
       next: () =>
         this.members.update((list) =>
           list.map((m) => (m.id === member.id ? { ...m, role } : m))),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to update member.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update member.'))
     });
   }
 
   removeMember(member: TeamMember): void {
     this.teamsService.removeMember(this.teamId(), member.id).subscribe({
       next: () => this.members.update((list) => list.filter((m) => m.id !== member.id)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to remove member.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to remove member.'))
     });
   }
 
@@ -181,7 +182,7 @@ export class TeamDetailComponent implements OnInit {
         this.stateForm.reset({ name: '', type: 'Unstarted', color: '#818cf8' });
         this.reloadWorkflow();
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to create state.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to create state.'))
     });
   }
 
@@ -210,14 +211,14 @@ export class TeamDetailComponent implements OnInit {
           this.editingStateId.set(null);
           this.reloadWorkflow();
         },
-        error: (err) => this.error.set(err.error?.description ?? 'Failed to update state.')
+        error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update state.'))
       });
   }
 
   deleteState(stateId: string): void {
     this.workflows.deleteState(this.teamId(), stateId).subscribe({
       next: () => this.reloadWorkflow(),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete state.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete state.'))
     });
   }
 
@@ -232,7 +233,7 @@ export class TeamDetailComponent implements OnInit {
 
     this.workflows.reorder(this.teamId(), ids).subscribe({
       next: () => this.reloadWorkflow(),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to reorder states.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to reorder states.'))
     });
   }
 

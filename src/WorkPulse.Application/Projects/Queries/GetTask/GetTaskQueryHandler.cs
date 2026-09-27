@@ -3,7 +3,8 @@ using WorkPulse.Application.Projects.Services;
 
 namespace WorkPulse.Application.Projects.Queries.GetTask;
 
-public sealed class GetTaskQueryHandler(IApplicationDbContext context, ITenantContext tenantContext) : IRequestHandler<GetTaskQuery, Result<TaskItemDto>>
+public sealed class GetTaskQueryHandler(IApplicationDbContext context, ITenantContext tenantContext)
+	: IRequestHandler<GetTaskQuery, Result<TaskItemDto>>
 {
 	public async Task<Result<TaskItemDto>> Handle(GetTaskQuery request, CancellationToken ct)
 	{
@@ -12,11 +13,16 @@ public sealed class GetTaskQueryHandler(IApplicationDbContext context, ITenantCo
 		{
 			return tenantCheck.Error;
 		}
-		TaskItem? task = await context.TaskItems.AsNoTracking().FirstOrDefaultAsync((TaskItem t) => t.Id == request.TaskId, ct);
+
+		TaskItem? task = await context.TaskItems.AsNoTracking()
+			.ForTenant(tenantContext)
+			.FirstOrDefaultAsync(item => item.Id == request.TaskId, ct);
+
 		if (task is null)
 		{
-			return Error.NotFound("Task.NotFound", "Task not found.");
+			return Error.NotFound(TaskErrors.NotFoundCode, "Task not found.");
 		}
+
 		return await TaskDtoMapper.MapTaskDtoAsync(context, task, ct);
 	}
 }

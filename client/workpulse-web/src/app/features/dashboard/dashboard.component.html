@@ -18,7 +18,7 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 @if (loading()) {
@@ -33,32 +33,32 @@
     <article class="stat-card">
       <span class="stat-label">Total tasks</span>
       <div class="stat-value">{{ d.totalTasks }}</div>
-      <span class="stat-icon stat-icon--total">📋</span>
+      <span class="stat-mark stat-mark--accent" aria-hidden="true"></span>
     </article>
     <article class="stat-card stat-card--open">
       <span class="stat-label">Open</span>
       <div class="stat-value">{{ d.openTasks }}</div>
-      <span class="stat-icon stat-icon--open">🔓</span>
+      <span class="stat-mark stat-mark--info" aria-hidden="true"></span>
     </article>
     <article class="stat-card stat-card--done">
       <span class="stat-label">Completed</span>
       <div class="stat-value">{{ d.completedTasks }}</div>
-      <span class="stat-icon stat-icon--done">✅</span>
+      <span class="stat-mark stat-mark--success" aria-hidden="true"></span>
     </article>
     <article class="stat-card" [class.stat-card--danger]="d.overdueTasks > 0">
       <span class="stat-label">Overdue</span>
       <div class="stat-value">{{ d.overdueTasks }}</div>
-      <span class="stat-icon stat-icon--danger">⚠️</span>
+      <span class="stat-mark stat-mark--danger" aria-hidden="true"></span>
     </article>
     <article class="stat-card stat-card--warn">
       <span class="stat-label">Unassigned</span>
       <div class="stat-value">{{ d.unassignedTasks }}</div>
-      <span class="stat-icon stat-icon--warn">👤</span>
+      <span class="stat-mark stat-mark--warning" aria-hidden="true"></span>
     </article>
     <article class="stat-card stat-card--info">
       <span class="stat-label">Avg. cycle time</span>
       <div class="stat-value">{{ d.averageCycleTimeDays | number: '1.0-1' }}<small>days</small></div>
-      <span class="stat-icon stat-icon--info">⏱</span>
+      <span class="stat-mark stat-mark--accent" aria-hidden="true"></span>
     </article>
   </div>
 
@@ -66,7 +66,12 @@
     <section class="panel chart-panel">
       <h2>Tasks by status</h2>
       @if (d.tasksByStatus.length === 0) {
-        <p class="empty">No tasks yet.</p>
+        <app-empty-state
+          icon="▦"
+          heading="No tasks yet"
+          message="Create work on the board to see status breakdown.">
+          <a routerLink="/board" class="btn btn-primary btn-sm">Open board</a>
+        </app-empty-state>
       } @else {
         <ul class="bar-list">
           @for (row of d.tasksByStatus; track row.statusName) {
@@ -85,7 +90,10 @@
     <section class="panel chart-panel">
       <h2>Tasks by priority</h2>
       @if (d.tasksByPriority.length === 0) {
-        <p class="empty">No tasks yet.</p>
+        <app-empty-state
+          icon="◇"
+          heading="No priority data"
+          message="Prioritized tasks will appear here." />
       } @else {
         <ul class="bar-list">
           @for (row of d.tasksByPriority; track row.priority) {
@@ -104,7 +112,10 @@
     <section class="panel chart-panel">
       <h2>Velocity <small>created vs completed / week</small></h2>
       @if (velocity().length === 0) {
-        <p class="empty">Not enough data yet.</p>
+        <app-empty-state
+          icon="↻"
+          heading="Not enough data yet"
+          message="Velocity trends appear after a few weeks of activity." />
       } @else {
         <div class="velocity-chart" role="img" aria-label="Weekly velocity chart">
           @for (point of velocity(); track point.weekStart) {
@@ -127,7 +138,12 @@
     <section class="panel chart-panel">
       <h2>Project progress</h2>
       @if (projectProgress().length === 0) {
-        <p class="empty">No projects yet. <a routerLink="/projects" class="link">Create one</a>.</p>
+        <app-empty-state
+          icon="▣"
+          heading="No projects yet"
+          message="Create a project to track completion rates.">
+          <a routerLink="/projects" class="btn btn-primary btn-sm">Create project</a>
+        </app-empty-state>
       } @else {
         <ul class="progress-list">
           @for (project of projectProgress(); track project.projectId) {

@@ -36,7 +36,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
-      if (!auth.peekRefreshToken()) {
+      if (!auth.hasSession()) {
         return throwError(() => err);
       }
 

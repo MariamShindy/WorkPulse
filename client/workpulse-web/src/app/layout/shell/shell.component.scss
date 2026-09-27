@@ -43,7 +43,7 @@
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 0.55rem;
+  border-radius: var(--r-md);
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: var(--text-on-accent);
   font-weight: 800;
@@ -142,15 +142,42 @@
 }
 
 .icon {
-  opacity: 0.8;
-  width: 1rem;
-  text-align: center;
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  opacity: 0.85;
   flex-shrink: 0;
-  font-style: normal;
-  line-height: 1;
+  color: inherit;
+
+  svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
 
 .sidebar-nav a.active .icon { opacity: 1; }
+
+.menu-btn svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.footer-actions .btn-icon svg,
+.footer-actions svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* ── Sidebar footer ──────────────────────────────────────────────────────── */
 
@@ -213,12 +240,24 @@
 
 .footer-actions {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.5rem;
 
-  .btn {
+  .btn-icon {
+    flex: 0 0 2.2rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0.4rem;
+
+    svg {
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+  }
+
+  .btn:not(.btn-icon) {
     flex: 1;
-    font-size: 0.78rem;
-    padding: 0.38rem 0.6rem;
+    font-size: 0.7rem;
+    padding: 0.32rem 0.5rem;
   }
 }
 

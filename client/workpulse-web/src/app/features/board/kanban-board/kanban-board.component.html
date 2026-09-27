@@ -17,14 +17,17 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 @if (teams().length === 0 && !loading()) {
   <div class="panel">
     <app-empty-state
+      icon="▦"
       heading="No teams yet"
-      message="Create a team first, then return here to manage tasks on the board." />
+      message="Create a team first, then return here to manage tasks on the board.">
+      <a routerLink="/teams" class="btn btn-primary">Go to teams</a>
+    </app-empty-state>
   </div>
 } @else {
   <div class="filters-bar board-filters">
@@ -123,7 +126,7 @@
   <section class="quick-add panel">
     <form [formGroup]="form" (ngSubmit)="createTask()" class="quick-add-form">
       <input type="text" formControlName="title" placeholder="Quick add — type a task title and press Enter…" />
-      <button type="submit" class="btn btn-primary" [disabled]="creating()">
+      <button type="submit" class="btn btn-primary" [class.is-busy]="creating()" [disabled]="creating()">
         {{ creating() ? 'Adding…' : '+ Add task' }}
       </button>
     </form>

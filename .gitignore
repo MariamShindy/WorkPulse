@@ -21,10 +21,6 @@ secrets.json
 logs/
 *.log
 
-## Docker
-.dockerignore
-!client/workpulse-web/.dockerignore
-
 ## OS
 .DS_Store
 Thumbs.db
@@ -45,3 +41,6 @@ npm-debug.log*
 
 ## Cursor
 .cursor/
+
+# Local file-storage root (FileStorageOptions.RootPath) — runtime artifact
+uploads/

@@ -5,6 +5,7 @@ import { CompaniesService } from '../../../core/services/companies.service';
 import { AuditLogEntry, CompanyMember, PagedList } from '../../../core/models';
 import { PaginatorComponent } from '../../../shared/paginator/paginator.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-audit-logs',
@@ -55,7 +56,7 @@ export class AuditLogsComponent implements OnInit {
           this.loading.set(false);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to load audit logs.');
+          this.error.set(apiErrorMessage(err, 'Failed to load audit logs.'));
           this.loading.set(false);
         }
       });

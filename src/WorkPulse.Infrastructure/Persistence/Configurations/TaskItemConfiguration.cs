@@ -24,6 +24,7 @@ public sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
 		builder.Property((TaskItem t) => t.LoggedHours).HasPrecision(10, 2);
 		builder.Property((TaskItem t) => t.BlockedReason).HasMaxLength(2000);
 		builder.Property((TaskItem t) => t.RowVersion).IsRowVersion();
+		builder.HasIndex((TaskItem t) => new { t.TenantId, t.SprintId, t.CompletedAtUtc });
 		builder.HasIndex((TaskItem t) => t.EpicId);
 		builder.HasIndex((TaskItem t) => t.SprintId);
 		builder.HasIndex((TaskItem t) => t.AssignedTeamId);

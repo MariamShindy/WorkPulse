@@ -8,6 +8,7 @@ import { ModalComponent } from '../../../shared/modal/modal.component';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { PaginatorComponent } from '../../../shared/paginator/paginator.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-epics-list',
@@ -68,7 +69,7 @@ export class EpicsListComponent implements OnInit {
           this.loading.set(false);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to load epics.');
+          this.error.set(apiErrorMessage(err, 'Failed to load epics.'));
           this.loading.set(false);
         }
       });
@@ -121,7 +122,7 @@ export class EpicsListComponent implements OnInit {
         this.load(this.paged()?.page ?? 1);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to save epic.');
+        this.error.set(apiErrorMessage(err, 'Failed to save epic.'));
         this.saving.set(false);
       }
     });
@@ -133,7 +134,7 @@ export class EpicsListComponent implements OnInit {
     this.deleteTarget.set(null);
     this.epicsService.delete(epic.id).subscribe({
       next: () => this.load(this.paged()?.page ?? 1),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete epic.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete epic.'))
     });
   }
 

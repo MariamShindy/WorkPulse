@@ -4,11 +4,13 @@ import { Router, RouterLink } from '@angular/router';
 import { UsersService } from '../../../core/services/users.service';
 import { TenantService } from '../../../core/services/tenant.service';
 import { UserCompany } from '../../../core/models';
+import { apiErrorMessage } from '../../../core/utils/api-error';
+import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-select-workspace',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, EmptyStateComponent],
   templateUrl: './select-workspace.component.html',
   styleUrl: './select-workspace.component.scss'
 })
@@ -52,7 +54,7 @@ export class SelectWorkspaceComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Could not load your workspaces.');
+        this.error.set(apiErrorMessage(err, 'Could not load your workspaces.'));
         this.loading.set(false);
       }
     });
@@ -66,11 +68,11 @@ export class SelectWorkspaceComponent implements OnInit {
 
     this.users.setCurrentCompany(company.id).subscribe({
       next: (selected) => {
-        this.tenant.setTenant(selected.id, selected.name);
+        this.tenant.setTenant(selected.id, selected.name, company.role);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Could not open this workspace.');
+        this.error.set(apiErrorMessage(err, 'Could not open this workspace.'));
         this.switchingId.set(null);
       }
     });

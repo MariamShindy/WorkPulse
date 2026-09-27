@@ -10,6 +10,7 @@ import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-d
 import { PaginatorComponent } from '../../../shared/paginator/paginator.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { DrawerComponent } from '../../../shared/drawer/drawer.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-sprints-list',
@@ -80,7 +81,7 @@ export class SprintsListComponent implements OnInit {
           this.loading.set(false);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to load sprints.');
+          this.error.set(apiErrorMessage(err, 'Failed to load sprints.'));
           this.loading.set(false);
         }
       });
@@ -146,7 +147,7 @@ export class SprintsListComponent implements OnInit {
         this.load(this.paged()?.page ?? 1);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to save sprint.');
+        this.error.set(apiErrorMessage(err, 'Failed to save sprint.'));
         this.saving.set(false);
       }
     });
@@ -158,7 +159,7 @@ export class SprintsListComponent implements OnInit {
     this.deleteTarget.set(null);
     this.sprintsService.delete(sprint.id).subscribe({
       next: () => this.load(this.paged()?.page ?? 1),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete sprint.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete sprint.'))
     });
   }
 
@@ -236,7 +237,7 @@ export class SprintsListComponent implements OnInit {
       })
       .subscribe({
         next: onSuccess,
-        error: (err) => this.error.set(err.error?.description ?? 'Failed to move task.')
+        error: (err) => this.error.set(apiErrorMessage(err, 'Failed to move task.'))
       });
   }
 }

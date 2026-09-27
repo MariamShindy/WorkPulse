@@ -618,6 +618,14 @@ textarea { resize: vertical; min-height: 4rem; }
     white-space: nowrap;
     flex-shrink: 0;
 
+    svg {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     &:hover { background: var(--bg-hover); color: var(--text); }
   }
 }
@@ -639,6 +647,94 @@ textarea { resize: vertical; min-height: 4rem; }
   color: var(--danger);
   font-size: var(--font-xs);
   margin-top: 0.25rem;
+}
+
+/* ── Loading spinner ─────────────────────────────────────────────────────── */
+
+.spinner {
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  border-radius: var(--r-full);
+  animation: spin 0.7s linear infinite;
+}
+
+.spinner-lg {
+  width: 2rem;
+  height: 2rem;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-center {
+  display: grid;
+  place-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.loading-grid {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.btn.is-busy {
+  position: relative;
+  pointer-events: none;
+  color: transparent !important;
+
+  &::after {
+    content: '';
+    position: absolute;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: var(--r-full);
+    animation: spin 0.7s linear infinite;
+  }
+}
+
+.btn-ghost.is-busy::after,
+.btn-subtle.is-busy::after,
+.btn-danger.is-busy::after {
+  border-color: color-mix(in srgb, var(--text-muted) 35%, transparent);
+  border-top-color: var(--text);
+}
+
+/* ── Toast / inline feedback ─────────────────────────────────────────────── */
+
+.toast-stack {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  z-index: 80;
+  display: grid;
+  gap: var(--sp-2);
+  width: min(100% - 2rem, 360px);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  padding: 0.85rem 1rem;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-sm);
+  animation: toast-in var(--transition-spring) both;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Link ────────────────────────────────────────────────────────────────── */
@@ -694,4 +790,42 @@ textarea { resize: vertical; min-height: 4rem; }
   .filters-bar label { max-width: none; }
 
   .form-actions { flex-direction: column-reverse; }
+}
+
+/* ── Skip link ───────────────────────────────────────────────────────────────
+   Visually hidden until focused, so keyboard users can jump past the sidebar. */
+
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 100;
+  transform: translate(-50%, -120%);
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--border-strong);
+  border-top: 0;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: var(--font-sm);
+  font-weight: 550;
+  text-decoration: none;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-base);
+}
+
+/* Plain :focus, not :focus-visible — a skip link is only ever reached by keyboard, and
+   :focus-visible does not match when focus is moved programmatically. */
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+/* Never animate the reveal for users who have asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .skip-link { transition: none; }
+}
+
+/* Focused main region should not draw its own ring after a skip-link jump. */
+main.content:focus {
+  outline: none;
 }

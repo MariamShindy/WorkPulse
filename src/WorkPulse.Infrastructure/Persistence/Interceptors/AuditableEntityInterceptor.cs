@@ -30,7 +30,14 @@ public sealed class AuditableEntityInterceptor(ICurrentUserService currentUser, 
 		{
 			if (item.State == EntityState.Added)
 			{
-				item.Property("CreatedAtUtc").CurrentValue = utcNow;
+				// Respect a value the handler already set. Commands run before
+				// TransactionBehavior saves, so a handler returning a DTO has to stamp the
+				// timestamp itself or report default(DateTime) to the caller.
+				if (item.Property("CreatedAtUtc").CurrentValue is not DateTime created || created == default)
+				{
+					item.Property("CreatedAtUtc").CurrentValue = utcNow;
+				}
+
 				item.Property("CreatedById").CurrentValue = userId;
 			}
 			EntityState state = item.State;

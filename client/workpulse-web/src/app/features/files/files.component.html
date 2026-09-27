@@ -6,7 +6,7 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 <div class="filters-bar files-toolbar">
@@ -29,7 +29,7 @@
   </label>
   @if (entityId()) {
     <div class="upload-action">
-      <label class="btn btn-primary upload-btn" [class.disabled]="uploading()">
+      <label class="btn btn-primary upload-btn" [class.is-busy]="uploading()">
         {{ uploading() ? 'Uploading…' : 'Upload file' }}
         <input
           type="file"
@@ -49,10 +49,15 @@
       message="Choose a task, project or team above to see and upload its attachments." />
   </div>
 } @else if (loading()) {
-  <div class="skeleton block"></div>
+  <div class="loading-grid">
+    <div class="skeleton block"></div>
+  </div>
 } @else if (!paged() || paged()!.items.length === 0) {
   <div class="panel">
-    <app-empty-state heading="No files yet" message="Upload the first attachment using the button above." />
+    <app-empty-state
+      icon="⎘"
+      heading="No files yet"
+      message="Upload the first attachment using the button above." />
   </div>
 } @else {
   <div class="table-wrap">
@@ -75,7 +80,7 @@
             <td>{{ file.createdAtUtc | date: 'MMM d, y HH:mm' }}</td>
             <td class="actions-cell">
               <button type="button" class="btn btn-ghost btn-sm" (click)="download(file)">Download</button>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(file)">Delete</button>
+              <button type="button" class="btn btn-danger btn-sm" (click)="deleteTarget.set(file)">Delete</button>
             </td>
           </tr>
         }

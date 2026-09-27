@@ -6,20 +6,71 @@ internal static class TaskDtoMapper
 {
 	internal static async Task<TaskItemDto> MapTaskDtoAsync(IApplicationDbContext context, TaskItem task, CancellationToken ct)
 	{
-		List<Guid> assigneeIds = await (from a in context.TaskAssignees.AsNoTracking()
-			where a.TaskId == task.Id
-			select a.UserId).ToListAsync(ct);
-		TaskItemDto dto = await (from t in context.TaskItems.AsNoTracking()
-			join team in context.Teams.AsNoTracking() on t.TeamId equals team.Id
-			join state in context.WorkflowStates.AsNoTracking() on t.WorkflowStateId equals state.Id
-			join project in context.Projects.AsNoTracking() on t.ProjectId equals project.Id into projects
-			from project in projects.DefaultIfEmpty()
-			where t.Id == task.Id
-			select new TaskItemDto(t.Id, t.TeamId, team.Key, string.Concat(team.Key + "-", t.Number), t.ProjectId, (project != null) ? project.Key : null, t.WorkflowStateId, state.Name, state.Type.ToString(), t.Title, t.Description, t.Priority.ToString(), t.AssigneeId, Array.Empty<Guid>(), t.CreatorId, t.DueDate, t.ParentTaskId, t.SortOrder, t.StoryPoints, t.EstimatedHours, t.LoggedHours, t.IsBlocked, t.BlockedReason, t.EpicId, t.SprintId, t.AssignedTeamId, t.CreatedAtUtc)).FirstAsync(ct);
-		return dto with
+		// Build from the in-memory entity — Create/Update/Move map before SaveChanges,
+		// so AsNoTracking queries against TaskItems would miss newly added rows.
+		string teamKey = await context.Teams.AsNoTracking()
+			.Where(team => team.Id == task.TeamId)
+			.Select(team => team.Key)
+			.FirstAsync(ct);
+
+		var state = await context.WorkflowStates.AsNoTracking()
+			.Where(workflowState => workflowState.Id == task.WorkflowStateId)
+			.Select(workflowState => new { workflowState.Name, workflowState.Type })
+			.FirstAsync(ct);
+
+		string? projectKey = null;
+		if (task.ProjectId.HasValue)
 		{
-			AssigneeIds = assigneeIds
-		};
+			projectKey = await context.Projects.AsNoTracking()
+				.Where(project => project.Id == task.ProjectId.Value)
+				.Select(project => project.Key)
+				.FirstOrDefaultAsync(ct);
+		}
+
+		List<Guid> assigneeIds = await ResolveAssigneeIdsAsync(context, task.Id, ct);
+
+		return new TaskItemDto(
+			task.Id,
+			task.TeamId,
+			teamKey,
+			string.Concat(teamKey, "-", task.Number),
+			task.ProjectId,
+			projectKey,
+			task.WorkflowStateId,
+			state.Name,
+			state.Type.ToString(),
+			task.Title,
+			task.Description,
+			task.Priority.ToString(),
+			task.AssigneeId,
+			assigneeIds,
+			task.CreatorId,
+			task.DueDate,
+			task.ParentTaskId,
+			task.SortOrder,
+			task.StoryPoints,
+			task.EstimatedHours,
+			task.LoggedHours,
+			task.IsBlocked,
+			task.BlockedReason,
+			task.EpicId,
+			task.SprintId,
+			task.AssignedTeamId,
+			task.CreatedAtUtc);
+	}
+
+	private static async Task<List<Guid>> ResolveAssigneeIdsAsync(IApplicationDbContext context, Guid taskId, CancellationToken ct)
+	{
+		List<Guid> fromStore = await context.TaskAssignees.AsNoTracking()
+			.Where(assignee => assignee.TaskId == taskId)
+			.Select(assignee => assignee.UserId)
+			.ToListAsync(ct);
+
+		IEnumerable<Guid> fromLocal = context.TaskAssignees.Local
+			.Where(assignee => assignee.TaskId == taskId)
+			.Select(assignee => assignee.UserId);
+
+		return fromStore.Concat(fromLocal).Distinct().ToList();
 	}
 
 	internal static async Task SyncAssigneesAsync(IApplicationDbContext context, Guid tenantId, Guid taskId, IReadOnlyList<Guid>? assigneeIds, CancellationToken ct)
@@ -28,12 +79,14 @@ internal static class TaskDtoMapper
 		{
 			return;
 		}
-		List<TaskAssignee> existing = await context.TaskAssignees.Where((TaskAssignee a) => a.TaskId == taskId).ToListAsync(ct);
+
+		List<TaskAssignee> existing = await context.TaskAssignees.Where(assignee => assignee.TaskId == taskId).ToListAsync(ct);
 		HashSet<Guid> desired = assigneeIds.Distinct().ToHashSet();
-		List<TaskAssignee> toRemove = existing.Where((TaskAssignee a) => !desired.Contains(a.UserId)).ToList();
-		HashSet<Guid> existingUserIds = existing.Select((TaskAssignee a) => a.UserId).ToHashSet();
+		List<TaskAssignee> toRemove = existing.Where(assignee => !desired.Contains(assignee.UserId)).ToList();
+		HashSet<Guid> existingUserIds = existing.Select(assignee => assignee.UserId).ToHashSet();
 		context.TaskAssignees.RemoveRange(toRemove);
-		foreach (Guid userId in desired.Where((Guid id) => !existingUserIds.Contains(id)))
+
+		foreach (Guid userId in desired.Where(id => !existingUserIds.Contains(id)))
 		{
 			context.TaskAssignees.Add(new TaskAssignee
 			{

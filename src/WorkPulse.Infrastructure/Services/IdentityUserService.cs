@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace WorkPulse.Infrastructure.Services;
 
-public sealed class IdentityUserService(UserManager<ApplicationUser> userManager, IDateTime dateTime) : IUserIdentityService
+public sealed class IdentityUserService(
+	UserManager<ApplicationUser> userManager,
+	SignInManager<ApplicationUser> signInManager,
+	IDateTime dateTime) : IUserIdentityService
 {
 	public async Task<Result<UserIdentityDto>> RegisterAsync(string email, string password, string firstName, string lastName, CancellationToken ct = default(CancellationToken))
 	{
@@ -21,7 +24,9 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 			LastName = lastName.Trim(),
 			CreatedAtUtc = now,
 			IsActive = true,
-			EmailConfirmed = true
+			EmailConfirmed = true,
+			// Required for the configured 5-attempt lockout to apply; IdentityUser defaults this to false.
+			LockoutEnabled = true
 		};
 		IdentityResult result = await userManager.CreateAsync(user, password);
 		if (!result.Succeeded)
@@ -40,10 +45,22 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 		{
 			return Error.Unauthorized("Auth.InvalidCredentials", "Invalid email or password.");
 		}
-		if (!(await userManager.CheckPasswordAsync(user, password)))
+		// CheckPasswordSignInAsync (unlike CheckPasswordAsync) increments AccessFailedCount and
+		// honours LockoutEnd, which is what makes the configured lockout policy take effect.
+		SignInResult signInResult = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+
+		if (signInResult.IsLockedOut)
+		{
+			return Error.Unauthorized(
+				"Auth.AccountLocked",
+				"Too many failed sign-in attempts. Please try again later.");
+		}
+
+		if (!signInResult.Succeeded)
 		{
 			return Error.Unauthorized("Auth.InvalidCredentials", "Invalid email or password.");
 		}
+
 		return MapUser(user);
 	}
 

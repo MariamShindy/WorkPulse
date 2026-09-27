@@ -1,3 +1,4 @@
+using WorkPulse.Application.Analytics;
 using WorkPulse.Application.Analytics.Dtos;
 
 namespace WorkPulse.Application.Abstractions.ReadServices;
@@ -11,4 +12,10 @@ public interface IAnalyticsReadService
 	Task<IReadOnlyList<AssigneeWorkloadDto>> GetAssigneeWorkloadAsync(Guid tenantId, Guid? teamId, CancellationToken ct);
 
 	Task<IReadOnlyList<ProjectProgressDto>> GetProjectProgressAsync(Guid tenantId, Guid? teamId, CancellationToken ct);
+
+	Task<CycleTimeAnalyticsDto> GetCycleTimeAnalyticsAsync(Guid tenantId, Guid? teamId, DateOnly? from, DateOnly? to, CancellationToken ct);
+
+	Task<IReadOnlyList<ThroughputPointDto>> GetThroughputAsync(Guid tenantId, Guid? teamId, AnalyticsGranularity granularity, int periods, CancellationToken ct);
+
+	Task<SprintBurndownDto?> GetSprintBurndownAsync(Guid tenantId, Guid sprintId, CancellationToken ct);
 }

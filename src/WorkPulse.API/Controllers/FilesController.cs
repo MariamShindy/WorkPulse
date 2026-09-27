@@ -6,6 +6,7 @@ using WorkPulse.Application.Files.Commands.DeleteFile;
 using WorkPulse.Application.Files.Commands.UploadFile;
 using WorkPulse.Application.Files.Dtos;
 using WorkPulse.Application.Files.Queries;
+using Microsoft.Net.Http.Headers;
 using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.API.Controllers;
@@ -75,7 +76,12 @@ public sealed class FilesController(ISender sender) : ControllerBase
 				Detail = "Preview is only available for image files."
 			});
 		}
-		base.Response.Headers.ContentDisposition = "inline; filename=\"" + result.Value.FileName + "\"";
+		// Build the header with the typed helper so a quote or newline in the file name cannot
+		// break out of the value; string interpolation here allowed header injection.
+		var contentDisposition = new ContentDispositionHeaderValue("inline");
+		contentDisposition.SetHttpFileName(result.Value.FileName);
+		Response.Headers.ContentDisposition = contentDisposition.ToString();
+
 		return File(result.Value.Content, result.Value.ContentType);
 	}
 

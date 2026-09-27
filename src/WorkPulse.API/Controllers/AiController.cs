@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
+using WorkPulse.API.Configuration;
 using WorkPulse.API.Contracts.AiChat;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
@@ -11,6 +13,7 @@ namespace WorkPulse.API.Controllers;
 [Route("api/ai")]
 [Authorize(Policy = "RequireAuthenticated")]
 [TenantRequired]
+[EnableRateLimiting(RateLimitingExtensions.AiPolicy)]
 public sealed class AiController(ISender sender) : ControllerBase
 {
     /// <summary>Ask the workspace AI assistant a question. Returns its answer plus which data tools it used.</summary>

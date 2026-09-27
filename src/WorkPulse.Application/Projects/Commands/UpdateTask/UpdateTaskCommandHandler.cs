@@ -97,6 +97,6 @@ public sealed class UpdateTaskCommandHandler(
 		}
 
 		await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, task.Id, request.AssigneeIds, cancellationToken);
-		task.AssigneeId = request.AssigneeIds.FirstOrDefault();
+		task.AssigneeId = request.AssigneeIds.Count > 0 ? request.AssigneeIds[0] : null;
 	}
 }

@@ -7,17 +7,19 @@
 
 <nav class="tabs" role="tablist">
   <button type="button" [class.active]="tab() === 'profile'" (click)="selectTab('profile')">Profile</button>
-  <button type="button" [class.active]="tab() === 'company'" (click)="selectTab('company')">Workspace</button>
-  <button type="button" [class.active]="tab() === 'members'" (click)="selectTab('members')">
-    Members &amp; invites
-  </button>
+  @if (tenant.isAdmin()) {
+    <button type="button" [class.active]="tab() === 'company'" (click)="selectTab('company')">Workspace</button>
+    <button type="button" [class.active]="tab() === 'members'" (click)="selectTab('members')">
+      Members &amp; invites
+    </button>
+  }
 </nav>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 @if (success()) {
-  <div class="alert alert-success">{{ success() }}</div>
+  <div class="alert alert-success" role="status">{{ success() }}</div>
 }
 
 @switch (tab()) {
@@ -46,7 +48,7 @@
           <input type="url" formControlName="avatarUrl" placeholder="https://…" />
         </label>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="savingProfile()">
+          <button type="submit" class="btn btn-primary" [class.is-busy]="savingProfile()" [disabled]="savingProfile()">
             {{ savingProfile() ? 'Saving…' : 'Save profile' }}
           </button>
         </div>
@@ -77,7 +79,7 @@
           <input type="url" formControlName="logoUrl" placeholder="https://…" />
         </label>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="savingCompany()">
+          <button type="submit" class="btn btn-primary" [class.is-busy]="savingCompany()" [disabled]="savingCompany()">
             {{ savingCompany() ? 'Saving…' : 'Save workspace' }}
           </button>
         </div>
@@ -89,7 +91,7 @@
     <section class="panel">
       <h2>Invite someone</h2>
       @if (invitationsError()) {
-        <div class="alert alert-error">{{ invitationsError() }}</div>
+        <div class="alert alert-error" role="alert">{{ invitationsError() }}</div>
       }
       <form [formGroup]="inviteForm" (ngSubmit)="sendInvite()" class="invite-form">
         <input type="email" formControlName="email" placeholder="colleague@company.com" />
@@ -98,7 +100,7 @@
             <option [value]="role">{{ role }}</option>
           }
         </select>
-        <button type="submit" class="btn btn-primary" [disabled]="inviting()">
+        <button type="submit" class="btn btn-primary" [class.is-busy]="inviting()" [disabled]="inviting()">
           {{ inviting() ? 'Sending…' : 'Send invite' }}
         </button>
       </form>
@@ -116,7 +118,7 @@
                 </small>
               </div>
               @if (invitation.status === 'Pending') {
-                <button type="button" class="btn btn-ghost btn-sm" (click)="cancelInvite(invitation)">
+                <button type="button" class="btn btn-danger btn-sm" (click)="cancelInvite(invitation)">
                   Cancel
                 </button>
               }
@@ -161,7 +163,12 @@
                     </span>
                   </td>
                   <td>
-                    <button type="button" class="btn btn-ghost btn-sm" (click)="toggleMemberActive(member)">
+                    <button
+                      type="button"
+                      class="btn btn-sm"
+                      [class.btn-danger]="member.isActive"
+                      [class.btn-ghost]="!member.isActive"
+                      (click)="toggleMemberActive(member)">
                       {{ member.isActive ? 'Deactivate' : 'Activate' }}
                     </button>
                   </td>

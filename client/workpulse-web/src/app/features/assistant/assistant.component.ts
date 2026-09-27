@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AiService } from '../../core/services/ai.service';
 import { AiChatMessage } from '../../core/models';
 import { AssistantMarkdownPipe } from './assistant-markdown.pipe';
+import { apiErrorMessage } from '../../core/utils/api-error';
 
 interface ChatEntry {
   role: 'user' | 'assistant';
@@ -121,11 +122,6 @@ export class AssistantComponent {
     if (err.status === 0) {
       return 'Could not reach the API. Check that the server and Ollama are running.';
     }
-    // ASP.NET ProblemDetails uses `detail`; some older clients used `description`.
-    return (
-      err.error?.detail ??
-      err.error?.description ??
-      'The assistant could not respond. Please try again.'
-    );
+    return apiErrorMessage(err, 'The assistant could not respond. Please try again.');
   }
 }

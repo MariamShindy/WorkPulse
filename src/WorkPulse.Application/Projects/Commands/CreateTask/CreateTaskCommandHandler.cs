@@ -27,7 +27,7 @@ public sealed class CreateTaskCommandHandler(
 			return validation.Error;
 		}
 
-		Result<Guid> workflowStateResult = await ResolveWorkflowStateIdAsync(request, cancellationToken);
+		Result<(Guid StateId, WorkflowStateType StateType)> workflowStateResult = await ResolveWorkflowStateIdAsync(request, cancellationToken);
 		if (workflowStateResult.IsFailure)
 		{
 			return workflowStateResult.Error;
@@ -40,7 +40,8 @@ public sealed class CreateTaskCommandHandler(
 			return Error.NotFound(TeamErrors.NotFoundCode, "Team issue counter not found.");
 		}
 
-		TaskItem task = CreateTaskEntity(request, workflowStateResult.Value, issueCounter, currentUser.UserId.Value);
+		TaskItem task = CreateTaskEntity(request, workflowStateResult.Value.StateId, issueCounter, currentUser.UserId.Value);
+		WorkflowStateTransition.Apply(task, workflowStateResult.Value.StateType);
 		context.TaskItems.Add(task);
 
 		await SyncAssigneesAsync(request, task.Id, cancellationToken);
@@ -81,16 +82,19 @@ public sealed class CreateTaskCommandHandler(
 		return Result.Success();
 	}
 
-	private async Task<Result<Guid>> ResolveWorkflowStateIdAsync(CreateTaskCommand request, CancellationToken cancellationToken)
+	private async Task<Result<(Guid StateId, WorkflowStateType StateType)>> ResolveWorkflowStateIdAsync(CreateTaskCommand request, CancellationToken cancellationToken)
 	{
 		if (request.WorkflowStateId.HasValue)
 		{
-			WorkflowState? workflowState = await context.WorkflowStates.AsNoTracking()
-				.FirstOrDefaultAsync(state => state.Id == request.WorkflowStateId, cancellationToken);
+			WorkflowState? workflowState = await (
+				from workflow in context.Workflows.AsNoTracking()
+				join state in context.WorkflowStates.AsNoTracking() on workflow.Id equals state.WorkflowId
+				where workflow.TeamId == request.TeamId && state.Id == request.WorkflowStateId
+				select state).FirstOrDefaultAsync(cancellationToken);
 
 			return workflowState is null
 				? Error.NotFound(WorkflowErrors.StateNotFoundCode, "Workflow state not found.")
-				: Result.Success(workflowState.Id);
+				: Result.Success((workflowState.Id, workflowState.Type));
 		}
 
 		WorkflowState? defaultState = await (
@@ -101,7 +105,7 @@ public sealed class CreateTaskCommandHandler(
 
 		return defaultState is null
 			? Error.NotFound(WorkflowErrors.StateNotFoundCode, "Default workflow state not found.")
-			: Result.Success(defaultState.Id);
+			: Result.Success((defaultState.Id, defaultState.Type));
 	}
 
 	private TaskItem CreateTaskEntity(

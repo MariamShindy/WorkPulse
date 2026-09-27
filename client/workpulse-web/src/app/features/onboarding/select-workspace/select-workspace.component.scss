@@ -59,6 +59,11 @@
     opacity: 0.65;
     cursor: not-allowed;
   }
+
+  &.is-opening {
+    border-color: var(--accent);
+    opacity: 1;
+  }
 }
 
 .workspace-logo,
@@ -99,11 +104,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.workspace-opening {
-  font-size: 0.8rem;
-  color: var(--text-muted);
 }
 
 .workspace-actions {

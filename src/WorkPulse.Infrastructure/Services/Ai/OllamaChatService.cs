@@ -83,11 +83,13 @@ public sealed class OllamaChatService(
 			new() { Role = "system", Content = SystemPrompt }
 		];
 
-		conversation.AddRange(messages.Select(message => new OllamaMessage
-		{
-			Role = message.Role == "assistant" ? "assistant" : "user",
-			Content = message.Content
-		}));
+		conversation.AddRange(messages
+			.Where(message => !string.IsNullOrWhiteSpace(message.Content))
+			.Select(message => new OllamaMessage
+			{
+				Role = message.Role == "assistant" ? "assistant" : "user",
+				Content = message.Content.Trim()
+			}));
 
 		return conversation;
 	}
@@ -189,7 +191,7 @@ public sealed class OllamaChatService(
 			object payload = toolName switch
 			{
 				"get_member_workload" => await insights.GetMemberWorkloadAsync(tenantId, cancellationToken),
-				"get_monthly_kpis" => await insights.GetMonthlyKpisAsync(tenantId, ReadMonths(arguments), cancellationToken),
+				"get_monthly_kpis" => await insights.GetMonthlyKpisAsync(tenantId, OllamaToolArgumentParser.ReadMonths(arguments), cancellationToken),
 				"get_overdue_tasks" => await insights.GetOverdueTasksAsync(tenantId, cancellationToken),
 				"get_workspace_summary" => await insights.GetWorkspaceSummaryAsync(tenantId, cancellationToken),
 				_ => new { error = $"Unknown tool '{toolName}'." }
@@ -201,27 +203,6 @@ public sealed class OllamaChatService(
 			logger.LogError(ex, "AI tool {Tool} failed.", toolName);
 			return JsonSerializer.Serialize(new { error = "The tool failed to retrieve data." }, JsonOptions);
 		}
-	}
-
-	private static int ReadMonths(JsonElement? arguments)
-	{
-		const int fallbackMonths = 6;
-		if (arguments is not { ValueKind: JsonValueKind.Object } argumentObject)
-		{
-			return fallbackMonths;
-		}
-
-		if (!argumentObject.TryGetProperty("months", out JsonElement monthsElement))
-		{
-			return fallbackMonths;
-		}
-
-		return monthsElement.ValueKind switch
-		{
-			JsonValueKind.Number when monthsElement.TryGetInt32(out int months) => months,
-			JsonValueKind.String when int.TryParse(monthsElement.GetString(), out int months) => months,
-			_ => fallbackMonths
-		};
 	}
 
 	private static readonly IReadOnlyList<OllamaTool> ToolCatalog =

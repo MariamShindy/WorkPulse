@@ -12,6 +12,7 @@ import { ModalComponent } from '../../../shared/modal/modal.component';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { PaginatorComponent } from '../../../shared/paginator/paginator.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 function validJson(value: string): boolean {
   try {
@@ -72,7 +73,7 @@ export class AutomationRulesComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to load automation rules.');
+        this.error.set(apiErrorMessage(err, 'Failed to load automation rules.'));
         this.loading.set(false);
       }
     });
@@ -129,7 +130,7 @@ export class AutomationRulesComponent implements OnInit {
         this.load(this.paged()?.page ?? 1);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to save rule.');
+        this.error.set(apiErrorMessage(err, 'Failed to save rule.'));
         this.saving.set(false);
       }
     });
@@ -149,7 +150,7 @@ export class AutomationRulesComponent implements OnInit {
         next: (updated) =>
           this.paged.update((p) =>
             p ? { ...p, items: p.items.map((r) => (r.id === rule.id ? updated : r)) } : p),
-        error: (err) => this.error.set(err.error?.description ?? 'Failed to toggle rule.')
+        error: (err) => this.error.set(apiErrorMessage(err, 'Failed to toggle rule.'))
       });
   }
 
@@ -159,7 +160,7 @@ export class AutomationRulesComponent implements OnInit {
     this.deleteTarget.set(null);
     this.automation.delete(rule.id).subscribe({
       next: () => this.load(this.paged()?.page ?? 1),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete rule.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete rule.'))
     });
   }
 }

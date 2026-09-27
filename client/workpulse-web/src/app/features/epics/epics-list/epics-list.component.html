@@ -7,7 +7,7 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 <div class="filters-bar">
@@ -39,7 +39,10 @@
   </div>
 } @else if (!paged() || paged()!.items.length === 0) {
   <div class="panel">
-    <app-empty-state heading="No epics found" message="Create an epic to group related tasks together." />
+    <app-empty-state
+      icon="◇"
+      heading="No epics found"
+      message="Create an epic to group related tasks together." />
   </div>
 } @else {
   <div class="epics-grid">
@@ -53,7 +56,7 @@
         <p>{{ epic.description || 'No description' }}</p>
         <footer>
           <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(epic)">Edit</button>
-          <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(epic)">Delete</button>
+          <button type="button" class="btn btn-danger btn-sm" (click)="deleteTarget.set(epic)">Delete</button>
         </footer>
       </article>
     }
@@ -98,7 +101,7 @@
     </label>
     <div class="form-actions">
       <button type="button" class="btn btn-ghost" (click)="modalOpen.set(false)">Cancel</button>
-      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      <button type="submit" class="btn btn-primary" [class.is-busy]="saving()" [disabled]="saving()">
         {{ saving() ? 'Saving…' : editingEpic() ? 'Save changes' : 'Create epic' }}
       </button>
     </div>

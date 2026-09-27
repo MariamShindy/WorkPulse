@@ -6,6 +6,7 @@ import { InvitationsService } from '../../../core/services/invitations.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TenantService } from '../../../core/services/tenant.service';
 import { AuthResponse } from '../../../core/models';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-accept-invite',
@@ -59,7 +60,7 @@ export class AcceptInviteComponent implements OnInit {
       .subscribe({
         next: (response) => this.finishAccept(response),
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Could not accept the invitation.');
+          this.error.set(apiErrorMessage(err, 'Could not accept the invitation.'));
           this.loading.set(false);
         }
       });
@@ -70,7 +71,7 @@ export class AcceptInviteComponent implements OnInit {
     this.invitations.accept({ token: this.token() }).subscribe({
       next: (response) => this.finishAccept(response),
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Could not accept the invitation.');
+        this.error.set(apiErrorMessage(err, 'Could not accept the invitation.'));
         this.loading.set(false);
       }
     });
