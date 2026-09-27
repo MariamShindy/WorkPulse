@@ -52,4 +52,18 @@ public sealed class ReportsController(ISender sender, IExportService exportServi
 		ExportResult result = await exportService.ExportReportPdfAsync(tenantContext.TenantId, new ReportFilter(teamId, projectId, assigneeId, from, to), ct);
 		return File(result.Content, result.ContentType, result.FileName);
 	}
+
+	[HttpGet("export/cycle-time/csv")]
+	public async Task<IActionResult> ExportCycleTimeCsv([FromQuery] Guid? teamId, [FromQuery] Guid? projectId, [FromQuery] Guid? assigneeId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct = default(CancellationToken))
+	{
+		ExportResult result = await exportService.ExportCycleTimeCsvAsync(tenantContext.TenantId, new ReportFilter(teamId, projectId, assigneeId, from, to), ct);
+		return File(result.Content, result.ContentType, result.FileName);
+	}
+
+	[HttpGet("export/analytics-summary/pdf")]
+	public async Task<IActionResult> ExportAnalyticsSummaryPdf([FromQuery] Guid? teamId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct = default(CancellationToken))
+	{
+		ExportResult result = await exportService.ExportAnalyticsSummaryPdfAsync(tenantContext.TenantId, new ReportFilter(teamId, null, null, from, to), ct);
+		return File(result.Content, result.ContentType, result.FileName);
+	}
 }

@@ -79,7 +79,9 @@ public sealed class ReportsReadService(ApplicationDbContext context) : IReportsR
 				task.WorkflowStateId,
 				task.DueDate,
 				task.CreatedAtUtc,
-				task.UpdatedAtUtc))
+				task.UpdatedAtUtc,
+				task.StartedAtUtc,
+				task.CompletedAtUtc))
 			.ToListAsync(cancellationToken);
 
 		List<TeamPerformanceRowDto> performanceRows = teams
@@ -113,8 +115,8 @@ public sealed class ReportsReadService(ApplicationDbContext context) : IReportsR
 			!completedStateIds.Contains(task.WorkflowStateId));
 
 		List<double> cycleTimes = teamTasks
-			.Where(task => completedStateIds.Contains(task.WorkflowStateId) && task.UpdatedAtUtc.HasValue)
-			.Select(task => (task.UpdatedAtUtc!.Value - task.CreatedAtUtc).TotalDays)
+			.Where(task => completedStateIds.Contains(task.WorkflowStateId) && (task.CompletedAtUtc ?? task.UpdatedAtUtc).HasValue)
+			.Select(task => ((task.CompletedAtUtc ?? task.UpdatedAtUtc)!.Value - (task.StartedAtUtc ?? task.CreatedAtUtc)).TotalDays)
 			.ToList();
 
 		double completionRate = totalTasks == 0 ? 0.0 : (double)completedTasks / totalTasks;
@@ -129,6 +131,54 @@ public sealed class ReportsReadService(ApplicationDbContext context) : IReportsR
 			overdueTasks,
 			completionRate,
 			averageCycleTimeDays);
+	}
+
+	public async Task<IReadOnlyList<CycleTimeTaskRowDto>> GetCycleTimeTaskRowsAsync(
+		Guid tenantId,
+		ReportFilter filter,
+		CancellationToken cancellationToken)
+	{
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+
+		IQueryable<TaskItem> completedTasks = ApplyTaskFilters(tenantId, filter)
+			.Where(task => completedStateIds.Contains(task.WorkflowStateId))
+			.OrderByDescending(task => task.CreatedAtUtc)
+			.Take(5000);
+
+		var rows = await (
+			from task in completedTasks
+			join team in context.Teams.AsNoTracking() on task.TeamId equals team.Id
+			where team.TenantId == tenantId
+			select new
+			{
+				task.Id,
+				Identifier = string.Concat(team.Key + "-", task.Number),
+				task.Title,
+				TeamKey = team.Key,
+				task.AssigneeId,
+				task.CreatedAtUtc,
+				task.UpdatedAtUtc,
+				task.StartedAtUtc,
+				task.CompletedAtUtc
+			}).ToListAsync(cancellationToken);
+
+		return rows.Select(row =>
+		{
+			DateTime? effectiveCompleted = row.CompletedAtUtc ?? row.UpdatedAtUtc;
+			DateTime effectiveStarted = row.StartedAtUtc ?? row.CreatedAtUtc;
+			double? cycleTimeDays = effectiveCompleted.HasValue ? (effectiveCompleted.Value - effectiveStarted).TotalDays : null;
+			double? leadTimeDays = effectiveCompleted.HasValue ? (effectiveCompleted.Value - row.CreatedAtUtc).TotalDays : null;
+			return new CycleTimeTaskRowDto(
+				row.Id,
+				row.Identifier,
+				row.Title,
+				row.TeamKey,
+				row.AssigneeId,
+				row.StartedAtUtc,
+				row.CompletedAtUtc,
+				cycleTimeDays,
+				leadTimeDays);
+		}).ToList();
 	}
 
 	private IQueryable<TaskItem> ApplyTaskFilters(Guid tenantId, ReportFilter filter)

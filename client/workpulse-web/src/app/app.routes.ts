@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/admin.guard';
 import { tenantGuard } from './core/guards/tenant.guard';
 import { AuthLayoutComponent } from './layout/auth-layout/auth-layout.component';
 import { ShellComponent } from './layout/shell/shell.component';
@@ -124,6 +125,7 @@ export const routes: Routes = [
       },
       {
         path: 'automation',
+        canActivate: [adminGuard],
         loadComponent: () =>
           import('./features/automation/automation-rules/automation-rules.component').then(
             (m) => m.AutomationRulesComponent
@@ -131,6 +133,7 @@ export const routes: Routes = [
       },
       {
         path: 'audit-logs',
+        canActivate: [adminGuard],
         loadComponent: () =>
           import('./features/audit/audit-logs/audit-logs.component').then(
             (m) => m.AuditLogsComponent
@@ -140,8 +143,14 @@ export const routes: Routes = [
         path: 'settings',
         loadComponent: () =>
           import('./features/settings/settings.component').then((m) => m.SettingsComponent)
+      },
+      {
+        path: 'not-found',
+        loadComponent: () =>
+          import('./features/errors/not-found/not-found.component').then((m) => m.NotFoundComponent)
       }
     ]
   },
-  { path: '**', redirectTo: 'dashboard' }
+  // A wildcard redirect to the dashboard hid typos and dead links; show a real 404 instead.
+  { path: '**', redirectTo: 'not-found' }
 ];

@@ -5,11 +5,13 @@ using System.Text;
 using ClosedXML.Excel;
 using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Abstractions.ReadServices;
+using WorkPulse.Application.Analytics;
+using WorkPulse.Application.Analytics.Dtos;
 using WorkPulse.Application.Reports.Dtos;
 
 namespace WorkPulse.Infrastructure.Services;
 
-public sealed class ExportService(IApplicationDbContext context, IReportsReadService reports) : IExportService
+public sealed class ExportService(IApplicationDbContext context, IReportsReadService reports, IAnalyticsReadService analytics) : IExportService
 {
 	public async Task<ExportResult> ExportTasksCsvAsync(Guid tenantId, ReportFilter filter, CancellationToken ct = default(CancellationToken))
 	{
@@ -74,6 +76,38 @@ public sealed class ExportService(IApplicationDbContext context, IReportsReadSer
 		TeamPerformanceReportDto performance = await reports.GetTeamPerformanceReportAsync(tenantId, filter, ct);
 		byte[] pdf = ReportPdfGenerator.Generate(summary, overdue, performance);
 		return new ExportResult(pdf, "application/pdf", "workpulse-report.pdf");
+	}
+
+	public async Task<ExportResult> ExportCycleTimeCsvAsync(Guid tenantId, ReportFilter filter, CancellationToken ct = default(CancellationToken))
+	{
+		IReadOnlyList<CycleTimeTaskRowDto> rows = await reports.GetCycleTimeTaskRowsAsync(tenantId, filter, ct);
+		StringBuilder sb = new StringBuilder();
+		sb.AppendLine("Identifier,Title,Team,AssigneeId,StartedAt,CompletedAt,CycleTimeDays,LeadTimeDays");
+		foreach (CycleTimeTaskRowDto row in rows)
+		{
+			string[] fields =
+			[
+				Escape(row.Identifier),
+				Escape(row.Title),
+				Escape(row.TeamKey),
+				row.AssigneeId?.ToString() ?? string.Empty,
+				row.StartedAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty,
+				row.CompletedAtUtc?.ToString("O", CultureInfo.InvariantCulture) ?? string.Empty,
+				row.CycleTimeDays?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty,
+				row.LeadTimeDays?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty
+			];
+			sb.AppendLine(string.Join(',', fields));
+		}
+		return new ExportResult(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", "cycle-time.csv");
+	}
+
+	public async Task<ExportResult> ExportAnalyticsSummaryPdfAsync(Guid tenantId, ReportFilter filter, CancellationToken ct = default(CancellationToken))
+	{
+		IReadOnlyList<TeamVelocityPointDto> velocity = await analytics.GetTeamVelocityAsync(tenantId, filter.TeamId, 12, ct);
+		CycleTimeAnalyticsDto cycleTime = await analytics.GetCycleTimeAnalyticsAsync(tenantId, filter.TeamId, filter.From, filter.To, ct);
+		IReadOnlyList<ThroughputPointDto> throughput = await analytics.GetThroughputAsync(tenantId, filter.TeamId, AnalyticsGranularity.Week, 12, ct);
+		byte[] pdf = AnalyticsSummaryPdfGenerator.Generate(velocity, cycleTime, throughput);
+		return new ExportResult(pdf, "application/pdf", "workpulse-analytics-summary.pdf");
 	}
 
 	private async Task<IReadOnlyList<ReportTaskRowDto>> GetTaskRowsAsync(Guid tenantId, ReportFilter filter, CancellationToken ct)

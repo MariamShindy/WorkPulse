@@ -6,7 +6,7 @@
   </div>
 
   @if (error()) {
-    <div class="alert alert-error" role="alert">{{ error() }}</div>
+    <div class="alert alert-error" role="alert" role="alert">{{ error() }}</div>
   }
 
   <form [formGroup]="form" (ngSubmit)="submit()">
@@ -20,7 +20,7 @@
       <textarea formControlName="description" rows="3" placeholder="What does your team work on?"></textarea>
     </label>
 
-    <button type="submit" class="btn btn-primary" [disabled]="loading()">
+    <button type="submit" class="btn btn-primary btn-lg" [class.is-busy]="loading()" [disabled]="loading()">
       {{ loading() ? 'Creating…' : 'Continue' }}
     </button>
   </form>

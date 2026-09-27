@@ -7,7 +7,7 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 <div class="filters-bar">
@@ -50,6 +50,7 @@
 } @else if (!paged() || paged()!.items.length === 0) {
   <div class="panel">
     <app-empty-state
+      icon="▦"
       heading="No projects found"
       message="Create a project to group related tasks and track progress." />
   </div>
@@ -75,7 +76,7 @@
         <footer>
           <button type="button" class="btn btn-ghost btn-sm" (click)="openEdit(project)">Edit</button>
           @if (!project.isArchived) {
-            <button type="button" class="btn btn-ghost btn-sm" (click)="archiveTarget.set(project)">
+            <button type="button" class="btn btn-danger btn-sm" (click)="archiveTarget.set(project)">
               Archive
             </button>
           }
@@ -139,7 +140,7 @@
     </div>
     <div class="form-actions">
       <button type="button" class="btn btn-ghost" (click)="modalOpen.set(false)">Cancel</button>
-      <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      <button type="submit" class="btn btn-primary" [class.is-busy]="saving()" [disabled]="saving()">
         {{ saving() ? 'Saving…' : editingProject() ? 'Save changes' : 'Create project' }}
       </button>
     </div>

@@ -9,4 +9,6 @@ public interface IReportsReadService
 	Task<OverdueTasksReportDto> GetOverdueTasksReportAsync(Guid tenantId, ReportFilter filter, CancellationToken ct);
 
 	Task<TeamPerformanceReportDto> GetTeamPerformanceReportAsync(Guid tenantId, ReportFilter filter, CancellationToken ct);
+
+	Task<IReadOnlyList<CycleTimeTaskRowDto>> GetCycleTimeTaskRowsAsync(Guid tenantId, ReportFilter filter, CancellationToken ct);
 }

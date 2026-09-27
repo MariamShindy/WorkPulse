@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CompaniesService } from '../../../core/services/companies.service';
 import { TenantService } from '../../../core/services/tenant.service';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-create-workspace',
@@ -35,11 +36,12 @@ export class CreateWorkspaceComponent {
 
     this.companies.create(name, description || undefined).subscribe({
       next: (company) => {
-        this.tenant.setTenant(company.id, company.name);
+        // The creator of a workspace is its Owner.
+        this.tenant.setTenant(company.id, company.name, 'Owner');
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Could not create workspace.');
+        this.error.set(apiErrorMessage(err, 'Could not create workspace.'));
         this.loading.set(false);
       },
       complete: () => this.loading.set(false)

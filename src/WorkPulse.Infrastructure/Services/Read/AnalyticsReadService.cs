@@ -1,4 +1,5 @@
 using WorkPulse.Application.Abstractions.ReadServices;
+using WorkPulse.Application.Analytics;
 using WorkPulse.Application.Analytics.Dtos;
 
 namespace WorkPulse.Infrastructure.Services.Read;
@@ -16,13 +17,26 @@ public sealed class AnalyticsReadService(ApplicationDbContext context) : IAnalyt
 		IQueryable<TaskItem> tasks = BuildTaskQuery(tenantId, teamId, from, to);
 		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
 
-		int totalTasks = await tasks.CountAsync(cancellationToken);
-		int openTasks = await tasks.CountAsync(task => !completedStateIds.Contains(task.WorkflowStateId), cancellationToken);
-		int completedTasks = await tasks.CountAsync(task => completedStateIds.Contains(task.WorkflowStateId), cancellationToken);
-		int overdueTasks = await tasks.CountAsync(
-			task => task.DueDate != null && task.DueDate < today && !completedStateIds.Contains(task.WorkflowStateId),
-			cancellationToken);
-		int unassignedTasks = await tasks.CountAsync(task => task.AssigneeId == null, cancellationToken);
+		var counts = await tasks
+			.GroupBy(_ => 1)
+			.Select(group => new
+			{
+				TotalTasks = group.Count(),
+				OpenTasks = group.Count(task => !completedStateIds.Contains(task.WorkflowStateId)),
+				CompletedTasks = group.Count(task => completedStateIds.Contains(task.WorkflowStateId)),
+				OverdueTasks = group.Count(task =>
+					task.DueDate != null &&
+					task.DueDate < today &&
+					!completedStateIds.Contains(task.WorkflowStateId)),
+				UnassignedTasks = group.Count(task => task.AssigneeId == null)
+			})
+			.FirstOrDefaultAsync(cancellationToken);
+
+		int totalTasks = counts?.TotalTasks ?? 0;
+		int openTasks = counts?.OpenTasks ?? 0;
+		int completedTasks = counts?.CompletedTasks ?? 0;
+		int overdueTasks = counts?.OverdueTasks ?? 0;
+		int unassignedTasks = counts?.UnassignedTasks ?? 0;
 
 		List<StatusCountDto> tasksByStatus = await GetTasksByStatusAsync(tasks, cancellationToken);
 		List<PriorityCountDto> tasksByPriority = await GetTasksByPriorityAsync(tasks, cancellationToken);
@@ -142,17 +156,213 @@ public sealed class AnalyticsReadService(ApplicationDbContext context) : IAnalyt
 			})
 			.ToListAsync(cancellationToken);
 
+		ILookup<Guid, Guid> tasksByProject = taskRows.ToLookup(task => task.ProjectId, task => task.WorkflowStateId);
+
 		return projectList
 			.Select(project =>
 			{
-				var projectTasks = taskRows.Where(task => task.ProjectId == project.Id).ToList();
-				int totalCount = projectTasks.Count;
-				int completedCount = projectTasks.Count(task => completedStateIds.Contains(task.WorkflowStateId));
+				IReadOnlyList<Guid> projectStateIds = tasksByProject[project.Id].ToList();
+				int totalCount = projectStateIds.Count;
+				int completedCount = projectStateIds.Count(stateId => completedStateIds.Contains(stateId));
 				double completionRate = totalCount == 0 ? 0.0 : (double)completedCount / totalCount;
 				return new ProjectProgressDto(project.Id, project.Key, project.Name, totalCount, completedCount, completionRate);
 			})
 			.OrderByDescending(progress => progress.CompletionRate)
 			.ToList();
+	}
+
+	public async Task<CycleTimeAnalyticsDto> GetCycleTimeAnalyticsAsync(
+		Guid tenantId,
+		Guid? teamId,
+		DateOnly? from,
+		DateOnly? to,
+		CancellationToken cancellationToken)
+	{
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+		IQueryable<TaskItem> tasks = BuildTaskQuery(tenantId, teamId, from, to)
+			.Where(task => completedStateIds.Contains(task.WorkflowStateId));
+
+		var samples = await tasks
+			.Select(task => new { task.CreatedAtUtc, task.UpdatedAtUtc, task.StartedAtUtc, task.CompletedAtUtc })
+			.ToListAsync(cancellationToken);
+
+		List<double> cycleTimes = [];
+		List<double> leadTimes = [];
+		foreach (var sample in samples)
+		{
+			DateTime? effectiveCompleted = sample.CompletedAtUtc ?? sample.UpdatedAtUtc;
+			if (effectiveCompleted is null)
+			{
+				continue;
+			}
+
+			DateTime effectiveStarted = sample.StartedAtUtc ?? sample.CreatedAtUtc;
+			cycleTimes.Add((effectiveCompleted.Value - effectiveStarted).TotalDays);
+			leadTimes.Add((effectiveCompleted.Value - sample.CreatedAtUtc).TotalDays);
+		}
+
+		cycleTimes.Sort();
+
+		return new CycleTimeAnalyticsDto(
+			cycleTimes.Count,
+			cycleTimes.Count == 0 ? 0.0 : cycleTimes.Average(),
+			Percentile(cycleTimes, 50.0),
+			Percentile(cycleTimes, 85.0),
+			leadTimes.Count == 0 ? 0.0 : leadTimes.Average(),
+			BuildCycleTimeHistogram(cycleTimes));
+	}
+
+	public async Task<IReadOnlyList<ThroughputPointDto>> GetThroughputAsync(
+		Guid tenantId,
+		Guid? teamId,
+		AnalyticsGranularity granularity,
+		int periods,
+		CancellationToken cancellationToken)
+	{
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+		int periodDays = granularity == AnalyticsGranularity.Week ? 7 : 1;
+		DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+		DateOnly windowStart = today.AddDays(-(periodDays * periods) + 1);
+		DateTime windowStartUtc = windowStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+		IQueryable<TaskItem> tasks = context.TaskItems.AsNoTracking()
+			.Where(task => task.TenantId == tenantId);
+
+		if (teamId.HasValue)
+		{
+			tasks = tasks.Where(task => task.TeamId == teamId.Value);
+		}
+
+		var completions = await tasks
+			.Where(task => completedStateIds.Contains(task.WorkflowStateId) &&
+				(task.CompletedAtUtc ?? task.UpdatedAtUtc) >= windowStartUtc)
+			.Select(task => new
+			{
+				CompletedAt = (task.CompletedAtUtc ?? task.UpdatedAtUtc)!.Value,
+				task.StoryPoints
+			})
+			.ToListAsync(cancellationToken);
+
+		List<ThroughputPointDto> points = [];
+		for (int i = 0; i < periods; i++)
+		{
+			DateOnly periodStart = windowStart.AddDays(i * periodDays);
+			DateOnly periodEnd = periodStart.AddDays(periodDays - 1);
+			var periodCompletions = completions
+				.Where(completion =>
+					DateOnly.FromDateTime(completion.CompletedAt) >= periodStart &&
+					DateOnly.FromDateTime(completion.CompletedAt) <= periodEnd)
+				.ToList();
+
+			points.Add(new ThroughputPointDto(
+				periodStart,
+				periodCompletions.Count,
+				periodCompletions.Sum(completion => completion.StoryPoints ?? 0)));
+		}
+
+		return points;
+	}
+
+	public async Task<SprintBurndownDto?> GetSprintBurndownAsync(
+		Guid tenantId,
+		Guid sprintId,
+		CancellationToken cancellationToken)
+	{
+		Sprint? sprint = await context.Sprints.AsNoTracking()
+			.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Id == sprintId, cancellationToken);
+		if (sprint is null)
+		{
+			return null;
+		}
+
+		HashSet<Guid> completedStateIds = await GetCompletedStateIdsAsync(tenantId, cancellationToken);
+
+		var taskRows = await context.TaskItems.AsNoTracking()
+			.Where(task => task.TenantId == tenantId && task.SprintId == sprintId)
+			.Select(task => new
+			{
+				task.StoryPoints,
+				CompletedAt = task.CompletedAtUtc ?? (completedStateIds.Contains(task.WorkflowStateId) ? task.UpdatedAtUtc : null)
+			})
+			.ToListAsync(cancellationToken);
+
+		bool usePoints = taskRows.Any(row => row.StoryPoints.HasValue && row.StoryPoints.Value > 0);
+		string unit = usePoints ? "points" : "count";
+		double UnitValue(int? storyPoints) => usePoints ? (storyPoints ?? 0) : 1.0;
+
+		double totalScope = taskRows.Sum(row => UnitValue(row.StoryPoints));
+		DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+		int totalDays = sprint.EndDate.DayNumber - sprint.StartDate.DayNumber;
+
+		List<BurndownPointDto> points = [];
+		for (DateOnly day = sprint.StartDate; day <= sprint.EndDate; day = day.AddDays(1))
+		{
+			double idealRemaining = totalDays <= 0
+				? 0.0
+				: Math.Max(0.0, totalScope * (1.0 - ((double)(day.DayNumber - sprint.StartDate.DayNumber) / totalDays)));
+
+			DateOnly effectiveDay = day > today ? today : day;
+			double completedCumulative = taskRows
+				.Where(row => row.CompletedAt.HasValue && DateOnly.FromDateTime(row.CompletedAt.Value) <= effectiveDay)
+				.Sum(row => UnitValue(row.StoryPoints));
+
+			double remaining = Math.Max(0.0, totalScope - completedCumulative);
+			points.Add(new BurndownPointDto(day, remaining, idealRemaining, completedCumulative));
+		}
+
+		return new SprintBurndownDto(sprint.Id, sprint.Name, sprint.StartDate, sprint.EndDate, unit, totalScope, points);
+	}
+
+	private static readonly (double UpperBoundDays, string Label)[] CycleTimeBuckets =
+	[
+		(1, "0-1d"),
+		(2, "1-2d"),
+		(3, "2-3d"),
+		(5, "3-5d"),
+		(8, "5-8d"),
+		(13, "8-13d"),
+		(21, "13-21d"),
+		(34, "21-34d"),
+		(double.PositiveInfinity, "34d+")
+	];
+
+	private static IReadOnlyList<CycleTimeBucketDto> BuildCycleTimeHistogram(IReadOnlyList<double> cycleTimeDays)
+	{
+		int[] counts = new int[CycleTimeBuckets.Length];
+		foreach (double days in cycleTimeDays)
+		{
+			for (int i = 0; i < CycleTimeBuckets.Length; i++)
+			{
+				if (days <= CycleTimeBuckets[i].UpperBoundDays)
+				{
+					counts[i]++;
+					break;
+				}
+			}
+		}
+
+		return CycleTimeBuckets
+			.Select((bucket, index) => new CycleTimeBucketDto(bucket.Label, counts[index]))
+			.ToList();
+	}
+
+	private static double Percentile(IReadOnlyList<double> sortedValues, double percentile)
+	{
+		if (sortedValues.Count == 0)
+		{
+			return 0.0;
+		}
+
+		double rank = percentile / 100.0 * (sortedValues.Count - 1);
+		int lower = (int)Math.Floor(rank);
+		int upper = (int)Math.Ceiling(rank);
+		if (lower == upper)
+		{
+			return sortedValues[lower];
+		}
+
+		double weight = rank - lower;
+		return sortedValues[lower] + (weight * (sortedValues[upper] - sortedValues[lower]));
 	}
 
 	private IQueryable<TaskItem> BuildTaskQuery(Guid tenantId, Guid? teamId, DateOnly? from, DateOnly? to)
@@ -278,11 +488,22 @@ public sealed class AnalyticsReadService(ApplicationDbContext context) : IAnalyt
 	{
 		var cycleSamples = await (
 			from task in tasks
-			where completedStateIds.Contains(task.WorkflowStateId) && task.UpdatedAtUtc != null
-			select new { task.CreatedAtUtc, task.UpdatedAtUtc }).ToListAsync(cancellationToken);
+			where completedStateIds.Contains(task.WorkflowStateId)
+			select new { task.CreatedAtUtc, task.UpdatedAtUtc, task.StartedAtUtc, task.CompletedAtUtc }).ToListAsync(cancellationToken);
 
-		return cycleSamples.Count == 0
-			? 0.0
-			: cycleSamples.Average(sample => (sample.UpdatedAtUtc!.Value - sample.CreatedAtUtc).TotalDays);
+		List<double> cycleTimes = [];
+		foreach (var sample in cycleSamples)
+		{
+			DateTime? effectiveCompleted = sample.CompletedAtUtc ?? sample.UpdatedAtUtc;
+			if (effectiveCompleted is null)
+			{
+				continue;
+			}
+
+			DateTime effectiveStarted = sample.StartedAtUtc ?? sample.CreatedAtUtc;
+			cycleTimes.Add((effectiveCompleted.Value - effectiveStarted).TotalDays);
+		}
+
+		return cycleTimes.Count == 0 ? 0.0 : cycleTimes.Average();
 	}
 }

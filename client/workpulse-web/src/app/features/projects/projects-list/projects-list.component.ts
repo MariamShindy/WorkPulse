@@ -8,6 +8,7 @@ import { ModalComponent } from '../../../shared/modal/modal.component';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { PaginatorComponent } from '../../../shared/paginator/paginator.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-projects-list',
@@ -76,7 +77,7 @@ export class ProjectsListComponent implements OnInit {
           this.loading.set(false);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to load projects.');
+          this.error.set(apiErrorMessage(err, 'Failed to load projects.'));
           this.loading.set(false);
         }
       });
@@ -147,7 +148,7 @@ export class ProjectsListComponent implements OnInit {
         this.load(this.paged()?.page ?? 1);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to save project.');
+        this.error.set(apiErrorMessage(err, 'Failed to save project.'));
         this.saving.set(false);
       }
     });
@@ -159,7 +160,7 @@ export class ProjectsListComponent implements OnInit {
     this.archiveTarget.set(null);
     this.projectsService.archive(project.id).subscribe({
       next: () => this.load(this.paged()?.page ?? 1),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to archive project.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to archive project.'))
     });
   }
 

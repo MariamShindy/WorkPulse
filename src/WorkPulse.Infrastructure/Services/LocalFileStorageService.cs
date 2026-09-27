@@ -43,10 +43,6 @@ public sealed class LocalFileStorageService(IOptions<FileStorageOptions> options
 		return Task.CompletedTask;
 	}
 
-	public string GetPublicUrl(string fileKey)
-	{
-		return "/api/files/download/" + Uri.EscapeDataString(fileKey);
-	}
 
 	private string GetFullPath(string storageKey)
 	{

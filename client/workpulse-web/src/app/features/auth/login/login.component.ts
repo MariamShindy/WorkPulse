@@ -4,6 +4,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { TenantService } from '../../../core/services/tenant.service';
+import { ThemeService } from '../../../core/services/theme.service';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-login',
@@ -17,6 +19,7 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly tenant = inject(TenantService);
   private readonly router = inject(Router);
+  readonly theme = inject(ThemeService);
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -43,10 +46,14 @@ export class LoginComponent {
         this.router.navigate([target]);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Invalid email or password.');
+        this.error.set(apiErrorMessage(err, 'Invalid email or password.'));
         this.loading.set(false);
       },
       complete: () => this.loading.set(false)
     });
+  }
+
+  toggleTheme(): void {
+    this.theme.toggle();
   }
 }

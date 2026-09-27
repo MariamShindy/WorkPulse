@@ -176,17 +176,17 @@ internal static class ReportPdfGenerator
 		});
 	}
 
-	private static void HeaderCell(TableCellDescriptor header, string text)
+	internal static void HeaderCell(TableCellDescriptor header, string text)
 	{
 		header.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text(text).Bold();
 	}
 
-	private static void BodyCell(TableDescriptor table, string text)
+	internal static void BodyCell(TableDescriptor table, string text)
 	{
 		table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten3).Padding(4).Text(text);
 	}
 
-	private static void SectionTitle(this IContainer container, string title)
+	internal static void SectionTitle(this IContainer container, string title)
 	{
 		container.Text(title).Bold().FontSize(12);
 	}

@@ -19,7 +19,6 @@ public static class DependencyInjection
 			cfg.AddOpenBehavior(typeof(TransactionBehavior<, >));
 		});
 		services.AddValidatorsFromAssembly(assembly, ServiceLifetime.Scoped, null, includeInternalTypes: true);
-		services.AddAutoMapper(assembly);
 		services.AddScoped<ITaskCollaborationService, TaskCollaborationService>();
 		return services;
 	}

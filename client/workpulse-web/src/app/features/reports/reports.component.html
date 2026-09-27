@@ -17,7 +17,7 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 <div class="filters-bar">
@@ -79,7 +79,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of s.rows; track row.taskId) {
+            @for (row of paginatedSummaryRows(); track row.taskId) {
               <tr>
                 <td>{{ row.identifier }}</td>
                 <td class="title-cell">{{ row.title }}</td>
@@ -93,6 +93,17 @@
           </tbody>
         </table>
       </div>
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button type="button" class="btn btn-ghost btn-sm" [disabled]="currentPage() === 1" (click)="setPage(currentPage() - 1)">
+            Previous
+          </button>
+          <span class="pagination-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
+          <button type="button" class="btn btn-ghost btn-sm" [disabled]="currentPage() === totalPages()" (click)="setPage(currentPage() + 1)">
+            Next
+          </button>
+        </div>
+      }
     }
   </section>
   }
@@ -167,3 +178,81 @@
     }
   </section>
 }
+
+<section class="panel report-panel">
+  <h2>
+    Cycle time &amp; throughput
+    <span class="export-actions inline-export">
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="analyticsExporting() !== null" (click)="exportAnalytics('cycle-csv')">
+        {{ analyticsExporting() === 'cycle-csv' ? 'Exporting…' : 'Export CSV' }}
+      </button>
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="analyticsExporting() !== null" (click)="exportAnalytics('summary-pdf')">
+        {{ analyticsExporting() === 'summary-pdf' ? 'Exporting…' : 'Export PDF' }}
+      </button>
+    </span>
+  </h2>
+
+  @if (cycleTime(); as c) {
+    <div class="stats-grid">
+      <article class="stat-card"><span class="label">Sample size</span><strong>{{ c.sampleSize }}</strong></article>
+      <article class="stat-card"><span class="label">Avg cycle time</span><strong>{{ c.averageCycleTimeDays | number: '1.0-1' }}d</strong></article>
+      <article class="stat-card"><span class="label">Median cycle time</span><strong>{{ c.medianCycleTimeDays | number: '1.0-1' }}d</strong></article>
+      <article class="stat-card"><span class="label">P85 cycle time</span><strong>{{ c.p85CycleTimeDays | number: '1.0-1' }}d</strong></article>
+      <article class="stat-card"><span class="label">Avg lead time</span><strong>{{ c.averageLeadTimeDays | number: '1.0-1' }}d</strong></article>
+    </div>
+
+    @if (c.sampleSize === 0) {
+      <p class="empty">No completed tasks in the current filters yet.</p>
+    } @else {
+      <div class="chart-grid">
+        <div class="chart-wrap">
+          <h3>Cycle time distribution</h3>
+          <div class="chart-canvas">
+            <canvas baseChart [data]="histogramChartData()" [options]="chartOptions" type="bar"></canvas>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <h3>Weekly throughput</h3>
+          <div class="chart-canvas">
+            <canvas baseChart [data]="throughputChartData()" [options]="chartOptions" type="bar"></canvas>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</section>
+
+<section class="panel report-panel">
+  <h2>Sprint burndown</h2>
+  <div class="filters-bar">
+    <label>
+      <span>Sprint</span>
+      <select [value]="selectedSprintId()" (change)="setSelectedSprint($any($event.target).value)">
+        @if (sprints().length === 0) {
+          <option value="">No sprints</option>
+        }
+        @for (sprint of sprints(); track sprint.id) {
+          <option [value]="sprint.id">{{ sprint.name }} ({{ sprint.startDate | date: 'MMM d' }} - {{ sprint.endDate | date: 'MMM d' }})</option>
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (burndownLoading()) {
+    <div class="skeleton block"></div>
+  } @else {
+    @if (burndown(); as b) {
+      <div class="stats-grid">
+        <article class="stat-card"><span class="label">Total scope</span><strong>{{ b.totalScope }} {{ b.unit }}</strong></article>
+        <article class="stat-card"><span class="label">Sprint window</span><strong>{{ b.startDate | date: 'MMM d' }} - {{ b.endDate | date: 'MMM d' }}</strong></article>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-canvas">
+          <canvas baseChart [data]="burndownChartData()" [options]="chartOptions" type="line"></canvas>
+        </div>
+      </div>
+    } @else {
+      <p class="empty">Select a sprint to see its burndown.</p>
+    }
+  }
+</section>

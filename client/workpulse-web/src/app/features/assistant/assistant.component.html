@@ -57,7 +57,7 @@
   </div>
 
   @if (error()) {
-    <div class="alert alert-error chat-error">{{ error() }}</div>
+    <div class="alert alert-error chat-error" role="alert">{{ error() }}</div>
   }
 
   <form class="composer" (ngSubmit)="send()">

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TeamsService } from '../../../core/services/teams.service';
 import { Team } from '../../../core/models';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 
 @Component({
@@ -35,10 +36,14 @@ export class TeamsListComponent {
 
   loadTeams(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.teamsService.list(1, 100, this.includeArchived()).subscribe({
       next: (res) => this.teams.set(res.items),
       complete: () => this.loading.set(false),
-      error: () => this.loading.set(false)
+      error: (err) => {
+        this.error.set(apiErrorMessage(err, 'Failed to load teams.'));
+        this.loading.set(false);
+      }
     });
   }
 
@@ -48,7 +53,7 @@ export class TeamsListComponent {
   }
 
   createTeam(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.creating()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -63,7 +68,7 @@ export class TeamsListComponent {
         this.form.reset({ name: '', key: '', color: '#6366f1' });
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to create team.');
+        this.error.set(apiErrorMessage(err, 'Failed to create team.'));
         this.creating.set(false);
       },
       complete: () => this.creating.set(false)

@@ -1,6 +1,8 @@
-import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin } from 'rxjs';
 import { TasksService } from '../../../core/services/tasks.service';
 import { CollaborationService } from '../../../core/services/collaboration.service';
 import { WorkLogsService } from '../../../core/services/work-logs.service';
@@ -23,6 +25,7 @@ import {
   WorkLog
 } from '../../../core/models';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 type DrawerTab = 'details' | 'comments' | 'activity' | 'worklog' | 'files';
 
@@ -40,6 +43,7 @@ export class TaskDetailComponent implements OnInit {
   private readonly filesService = inject(FilesService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly task = input.required<TaskItem>();
   readonly projects = input<Project[]>([]);
@@ -134,12 +138,26 @@ export class TaskDetailComponent implements OnInit {
       sprintId: t.sprintId ?? ''
     });
 
-    this.tasksService.listAssignees(t.id).subscribe({ next: (a) => this.assignees.set(a) });
-    this.tasksService.listLabels(t.id).subscribe({ next: (l) => this.taskLabels.set(l) });
-    this.tasksService.listDependencies(t.id).subscribe({ next: (d) => this.dependencies.set(d) });
-    this.loadComments();
-    this.loadWorkLogs();
-    this.loadFiles();
+    forkJoin({
+      assignees: this.tasksService.listAssignees(t.id),
+      labels: this.tasksService.listLabels(t.id),
+      dependencies: this.tasksService.listDependencies(t.id),
+      comments: this.collaboration.listComments(t.id),
+      workLogs: this.workLogsService.list(t.id),
+      files: this.filesService.list('Task', t.id)
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.assignees.set(result.assignees);
+          this.taskLabels.set(result.labels);
+          this.dependencies.set(result.dependencies);
+          this.comments.set(result.comments.items);
+          this.workLogs.set(result.workLogs.items);
+          this.files.set(result.files.items);
+        },
+        error: (err) => this.error.set(apiErrorMessage(err, 'Failed to load task details.'))
+      });
   }
 
   selectTab(tab: DrawerTab): void {
@@ -183,7 +201,7 @@ export class TaskDetailComponent implements OnInit {
           this.updated.emit(task);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to save task.');
+          this.error.set(apiErrorMessage(err, 'Failed to save task.'));
           this.saving.set(false);
         }
       });
@@ -193,7 +211,7 @@ export class TaskDetailComponent implements OnInit {
     this.confirmDelete.set(false);
     this.tasksService.delete(this.task().id).subscribe({
       next: () => this.deleted.emit(this.task().id),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete task.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete task.'))
     });
   }
 
@@ -205,7 +223,7 @@ export class TaskDetailComponent implements OnInit {
       : this.collaboration.watch(this.task().id);
     request$.subscribe({
       next: () => this.watching.update((v) => !v),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to update watcher.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update watcher.'))
     });
   }
 
@@ -218,14 +236,14 @@ export class TaskDetailComponent implements OnInit {
         this.tasksService.listAssignees(this.task().id).subscribe({
           next: (a) => this.assignees.set(a)
         }),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to add assignee.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to add assignee.'))
     });
   }
 
   removeAssignee(userId: string): void {
     this.tasksService.removeAssignee(this.task().id, userId).subscribe({
       next: () => this.assignees.update((list) => list.filter((a) => a.userId !== userId)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to remove assignee.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to remove assignee.'))
     });
   }
 
@@ -238,14 +256,14 @@ export class TaskDetailComponent implements OnInit {
         const label = this.allLabels().find((l) => l.id === labelId);
         if (label) this.taskLabels.update((list) => [...list, label]);
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to add label.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to add label.'))
     });
   }
 
   removeLabel(labelId: string): void {
     this.tasksService.removeLabel(this.task().id, labelId).subscribe({
       next: () => this.taskLabels.update((list) => list.filter((l) => l.id !== labelId)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to remove label.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to remove label.'))
     });
   }
 
@@ -259,14 +277,14 @@ export class TaskDetailComponent implements OnInit {
         this.dependencies.update((list) => [...list, dep]);
         this.dependencyForm.reset({ dependsOnTaskId: '', type: 'Blocks' });
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to add dependency.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to add dependency.'))
     });
   }
 
   removeDependency(dependencyId: string): void {
     this.tasksService.removeDependency(this.task().id, dependencyId).subscribe({
       next: () => this.dependencies.update((list) => list.filter((d) => d.id !== dependencyId)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to remove dependency.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to remove dependency.'))
     });
   }
 
@@ -285,7 +303,7 @@ export class TaskDetailComponent implements OnInit {
         this.comments.update((list) => [comment, ...list]);
         this.commentForm.reset({ body: '' });
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to add comment.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to add comment.'))
     });
   }
 
@@ -303,7 +321,7 @@ export class TaskDetailComponent implements OnInit {
           list.map((c) => (c.id === commentId ? updatedComment : c)));
         this.editingCommentId.set(null);
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to update comment.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update comment.'))
     });
   }
 
@@ -331,14 +349,14 @@ export class TaskDetailComponent implements OnInit {
           description: ''
         });
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to log work.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to log work.'))
     });
   }
 
   deleteWorkLog(workLogId: string): void {
     this.workLogsService.delete(workLogId).subscribe({
       next: () => this.workLogs.update((list) => list.filter((w) => w.id !== workLogId)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete work log.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete work log.'))
     });
   }
 
@@ -355,7 +373,7 @@ export class TaskDetailComponent implements OnInit {
     if (!file) return;
     this.filesService.upload(file, 'Task', this.task().id).subscribe({
       next: (stored) => this.files.update((list) => [stored, ...list]),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to upload file.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to upload file.'))
     });
   }
 
@@ -369,7 +387,7 @@ export class TaskDetailComponent implements OnInit {
   deleteFile(fileId: string): void {
     this.filesService.delete(fileId).subscribe({
       next: () => this.files.update((list) => list.filter((f) => f.id !== fileId)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete file.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete file.'))
     });
   }
 

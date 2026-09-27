@@ -1,5 +1,7 @@
 using WorkPulse.Application.Files.Dtos;
 
+using WorkPulse.Application.Files;
+
 namespace WorkPulse.Application.Files.Queries;
 
 public sealed class GetFileMetadataQueryHandler(IApplicationDbContext context, IFileStorageService storage, ITenantContext tenantContext) : IRequestHandler<GetFileMetadataQuery, Result<StoredFileDto>>
@@ -16,6 +18,6 @@ public sealed class GetFileMetadataQueryHandler(IApplicationDbContext context, I
 		{
 			return Error.NotFound("Files.NotFound", "File not found.");
 		}
-		return new StoredFileDto(file.Id, file.FileName, file.ContentType, file.SizeBytes, storage.GetPublicUrl(file.StorageKey), file.EntityType.ToString(), file.EntityId, file.UploadedById, file.CreatedAtUtc);
+		return new StoredFileDto(file.Id, file.FileName, file.ContentType, file.SizeBytes, FileUrls.Download(file.Id), file.EntityType.ToString(), file.EntityId, file.UploadedById, file.CreatedAtUtc);
 	}
 }

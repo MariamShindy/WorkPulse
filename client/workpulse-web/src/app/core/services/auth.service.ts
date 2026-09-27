@@ -5,11 +5,21 @@ import { catchError, finalize, shareReplay, tap } from 'rxjs/operators';
 import { Observable, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, UserCompany, UserProfile } from '../models';
+import { isJwtExpired } from '../utils/jwt';
 import { TenantService } from './tenant.service';
 
 const ACCESS_TOKEN_KEY = 'workpulse.accessToken';
-const REFRESH_TOKEN_KEY = 'workpulse.refreshToken';
 const USER_KEY = 'workpulse.user';
+
+/** Left behind by pre-cookie builds; cleared on the next sign-out. */
+const LEGACY_REFRESH_TOKEN_KEY = 'workpulse.refreshToken';
+
+/**
+ * Marks that the browser is holding a refresh cookie. The cookie itself is HttpOnly and
+ * therefore invisible to this code, so this flag is the only way to know whether attempting a
+ * silent refresh is worthwhile. It is a boolean, not a credential — leaking it grants nothing.
+ */
+const HAS_SESSION_KEY = 'workpulse.hasSession';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -18,7 +28,7 @@ export class AuthService {
   private readonly tenant = inject(TenantService);
 
   private readonly _accessToken = signal<string | null>(localStorage.getItem(ACCESS_TOKEN_KEY));
-  private readonly _refreshToken = signal<string | null>(localStorage.getItem(REFRESH_TOKEN_KEY));
+  private readonly _hasSession = signal<boolean>(localStorage.getItem(HAS_SESSION_KEY) === '1');
   private readonly _user = signal<UserProfile | null>(this.readUser());
 
   /** In-flight refresh so concurrent 401s share one /auth/refresh call. */
@@ -26,16 +36,26 @@ export class AuthService {
 
   readonly accessToken = computed(() => this._accessToken());
   readonly user = computed(() => this._user());
-  readonly isAuthenticated = computed(() => !!this._accessToken());
+
+  /**
+   * A stored access token is not enough — an expired one used to pass the guard and drop the
+   * user on the dashboard, where every request then failed with 401. A session is still live
+   * when the access token has lapsed but a refresh cookie remains, since it can be renewed.
+   */
+  readonly isAuthenticated = computed(
+    () => !isJwtExpired(this._accessToken()) || this._hasSession()
+  );
+
+  /** True when the access token itself is spent, regardless of refresh availability. */
+  readonly isAccessTokenExpired = computed(() => isJwtExpired(this._accessToken()));
+
+  /** Whether a silent refresh is worth attempting. */
+  readonly hasSession = computed(() => this._hasSession());
+
   readonly displayName = computed(() => {
     const u = this._user();
     return u ? `${u.firstName} ${u.lastName}`.trim() : '';
   });
-
-  /** Raw refresh token for the auth interceptor (avoids recursive HTTP). */
-  peekRefreshToken(): string | null {
-    return this._refreshToken();
-  }
 
   register(payload: {
     email: string;
@@ -44,13 +64,17 @@ export class AuthService {
     lastName: string;
   }): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/register`, payload)
+      .post<AuthResponse>(`${environment.apiUrl}/auth/register`, payload, { withCredentials: true })
       .pipe(tap((res) => this.persistSession(res)));
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+      .post<AuthResponse>(
+        `${environment.apiUrl}/auth/login`,
+        { email, password },
+        { withCredentials: true }
+      )
       .pipe(tap((res) => this.persistSession(res)));
   }
 
@@ -60,18 +84,16 @@ export class AuthService {
   }
 
   logout(): void {
-    const refresh = this._refreshToken();
-    if (refresh) {
-      this.http.post(`${environment.apiUrl}/auth/logout`, { refreshToken: refresh }).subscribe({
-        complete: () => this.clearSession()
-      });
-      return;
-    }
-    this.clearSession();
+    // withCredentials so the API receives — and can revoke — the refresh cookie.
+    this.http.post(`${environment.apiUrl}/auth/logout`, {}, { withCredentials: true }).subscribe({
+      next: () => this.clearSession(),
+      error: () => this.clearSession()
+    });
   }
 
   /**
-   * Exchanges the stored refresh token for a new access token.
+   * Exchanges the refresh cookie for a new access token. The token is never sent in the body —
+   * the browser attaches the HttpOnly cookie automatically.
    * On failure the session is cleared and the user is sent to login.
    */
   refreshSession(): Observable<AuthResponse> {
@@ -79,14 +101,13 @@ export class AuthService {
       return this.refreshInFlight;
     }
 
-    const refreshToken = this._refreshToken();
-    if (!refreshToken) {
+    if (!this._hasSession()) {
       this.clearSession();
-      return throwError(() => new Error('No refresh token'));
+      return throwError(() => new Error('No refresh session'));
     }
 
     this.refreshInFlight = this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken })
+      .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, {}, { withCredentials: true })
       .pipe(
         tap((res) => this.persistSession(res)),
         catchError((err) => {
@@ -104,10 +125,11 @@ export class AuthService {
 
   private persistSession(response: AuthResponse): void {
     localStorage.setItem(ACCESS_TOKEN_KEY, response.accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    localStorage.setItem(HAS_SESSION_KEY, '1');
+
     this._accessToken.set(response.accessToken);
-    this._refreshToken.set(response.refreshToken);
+    this._hasSession.set(true);
     this._user.set(response.user);
 
     if (response.user.currentTenantId) {
@@ -118,29 +140,34 @@ export class AuthService {
     }
   }
 
-  /** Fetches the workspace name so the shell can display it after a plain login. */
+  /**
+   * Fetches the workspace name and the user's role in it. The role drives which admin-only
+   * navigation the shell renders, so this runs even when the name is already cached.
+   */
   private resolveTenantName(tenantId: string): void {
-    if (this.tenant.tenantName()) return;
+    if (this.tenant.tenantName() && this.tenant.role()) return;
 
     this.http.get<UserCompany[]>(`${environment.apiUrl}/users/me/companies`).subscribe({
       next: (companies) => {
         const match = companies.find((c) => c.id === tenantId);
         if (match) {
-          this.tenant.setTenant(match.id, match.name);
+          this.tenant.setTenant(match.id, match.name, match.role);
         }
       },
       error: () => {
-        // Name resolution is cosmetic; ignore failures.
+        // Cosmetic; the API still enforces access on every admin endpoint.
       }
     });
   }
 
   private clearSession(): void {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(HAS_SESSION_KEY);
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+
     this._accessToken.set(null);
-    this._refreshToken.set(null);
+    this._hasSession.set(false);
     this._user.set(null);
     this.tenant.clear();
     this.router.navigate(['/auth/login']);

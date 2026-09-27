@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService } from '../../../core/services/theme.service';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-register',
@@ -15,6 +17,7 @@ export class RegisterComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  readonly theme = inject(ThemeService);
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -39,10 +42,14 @@ export class RegisterComponent {
     this.auth.register(this.form.getRawValue()).subscribe({
       next: () => this.router.navigate(['/onboarding/select-workspace']),
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Registration failed.');
+        this.error.set(apiErrorMessage(err, 'Registration failed.'));
         this.loading.set(false);
       },
       complete: () => this.loading.set(false)
     });
+  }
+
+  toggleTheme(): void {
+    this.theme.toggle();
   }
 }

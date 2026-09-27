@@ -26,7 +26,6 @@ public static class DependencyInjection
 	public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IHostEnvironment? environment = null)
 	{
 		services.AddHttpContextAccessor();
-		services.AddAutoMapper(typeof(DependencyInjection).Assembly);
 		AddPersistence(services, configuration);
 		AddIdentity(services);
 		AddCaching(services, configuration);

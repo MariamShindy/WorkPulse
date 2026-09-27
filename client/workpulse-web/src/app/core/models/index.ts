@@ -49,9 +49,9 @@ export interface UserProfile {
   lastLoginAtUtc?: string | null;
 }
 
+/** The refresh token is delivered as an HttpOnly cookie and is deliberately absent here. */
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
   accessTokenExpiresAtUtc: string;
   user: UserProfile;
 }
@@ -333,6 +333,43 @@ export interface ProjectProgress {
   totalTasks: number;
   completedTasks: number;
   completionRate: number;
+}
+
+export interface CycleTimeBucket {
+  label: string;
+  count: number;
+}
+
+export interface CycleTimeAnalytics {
+  sampleSize: number;
+  averageCycleTimeDays: number;
+  medianCycleTimeDays: number;
+  p85CycleTimeDays: number;
+  averageLeadTimeDays: number;
+  histogram: CycleTimeBucket[];
+}
+
+export interface ThroughputPoint {
+  periodStart: string;
+  completedTasks: number;
+  completedStoryPoints: number;
+}
+
+export interface BurndownPoint {
+  date: string;
+  remaining: number;
+  idealRemaining: number;
+  completedCumulative: number;
+}
+
+export interface SprintBurndown {
+  sprintId: string;
+  sprintName: string;
+  startDate: string;
+  endDate: string;
+  unit: string;
+  totalScope: number;
+  points: BurndownPoint[];
 }
 
 // ── Search ───────────────────────────────────────────────────────────────────

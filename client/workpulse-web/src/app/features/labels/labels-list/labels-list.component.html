@@ -6,7 +6,7 @@
 </section>
 
 @if (error()) {
-  <div class="alert alert-error">{{ error() }}</div>
+  <div class="alert alert-error" role="alert">{{ error() }}</div>
 }
 
 <section class="panel create-panel">
@@ -14,7 +14,7 @@
   <form [formGroup]="createForm" (ngSubmit)="create()" class="create-form">
     <input type="text" formControlName="name" placeholder="Label name (e.g. bug)" />
     <input type="color" formControlName="color" aria-label="Label color" />
-    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+    <button type="submit" class="btn btn-primary" [class.is-busy]="saving()" [disabled]="saving()">
       {{ saving() ? 'Creating…' : 'Create label' }}
     </button>
   </form>
@@ -29,8 +29,12 @@
   @if (loading()) {
     <div class="skeleton row"></div>
     <div class="skeleton row"></div>
+    <div class="skeleton row"></div>
   } @else if (labels().length === 0) {
-    <app-empty-state heading="No labels yet" message="Create labels above and attach them to tasks on the board." />
+    <app-empty-state
+      icon="◈"
+      heading="No labels yet"
+      message="Create labels above and attach them to tasks on the board." />
   } @else {
     <ul class="label-list">
       @for (label of labels(); track label.id) {
@@ -52,7 +56,7 @@
             </span>
             <span class="spacer"></span>
             <button type="button" class="btn btn-ghost btn-sm" (click)="startEdit(label)">Edit</button>
-            <button type="button" class="btn btn-ghost btn-sm" (click)="deleteTarget.set(label)">Delete</button>
+            <button type="button" class="btn btn-danger btn-sm" (click)="deleteTarget.set(label)">Delete</button>
           }
         </li>
       }

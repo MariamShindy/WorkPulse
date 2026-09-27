@@ -5,6 +5,7 @@ import { LabelsService } from '../../../core/services/labels.service';
 import { Label } from '../../../core/models';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
+import { apiErrorMessage } from '../../../core/utils/api-error';
 
 @Component({
   selector: 'app-labels-list',
@@ -46,7 +47,7 @@ export class LabelsListComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to load labels.');
+        this.error.set(apiErrorMessage(err, 'Failed to load labels.'));
         this.loading.set(false);
       }
     });
@@ -66,7 +67,7 @@ export class LabelsListComponent implements OnInit {
         this.saving.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to create label.');
+        this.error.set(apiErrorMessage(err, 'Failed to create label.'));
         this.saving.set(false);
       }
     });
@@ -86,7 +87,7 @@ export class LabelsListComponent implements OnInit {
         this.labels.update((list) => list.map((l) => (l.id === id ? updated : l)));
         this.editingId.set(null);
       },
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to update label.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to update label.'))
     });
   }
 
@@ -96,7 +97,7 @@ export class LabelsListComponent implements OnInit {
     this.deleteTarget.set(null);
     this.labelsService.delete(label.id).subscribe({
       next: () => this.labels.update((list) => list.filter((l) => l.id !== label.id)),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete label.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete label.'))
     });
   }
 }

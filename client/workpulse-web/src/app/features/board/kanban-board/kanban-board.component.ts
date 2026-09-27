@@ -1,9 +1,11 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { Subscription, forkJoin, of } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, Subscription, forkJoin, of } from 'rxjs';
+import { catchError, finalize, switchMap, tap } from 'rxjs/operators';
 import { TasksService } from '../../../core/services/tasks.service';
 import { TeamsService } from '../../../core/services/teams.service';
 import { WorkflowsService } from '../../../core/services/workflows.service';
@@ -26,6 +28,8 @@ import {
   Team,
   WorkflowState
 } from '../../../core/models';
+import { apiErrorMessage } from '../../../core/utils/api-error';
+import { ToastService } from '../../../core/services/toast.service';
 import { DrawerComponent } from '../../../shared/drawer/drawer.component';
 import { EmptyStateComponent } from '../../../shared/empty-state/empty-state.component';
 import { TaskDetailComponent } from '../task-detail/task-detail.component';
@@ -43,12 +47,13 @@ const EMPTY_FILTERS: BoardFilters = { projectId: '', epicId: '', sprintId: '', l
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DrawerComponent, EmptyStateComponent, TaskDetailComponent, DragDropModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, DrawerComponent, EmptyStateComponent, TaskDetailComponent, DragDropModule],
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss'
 })
 export class KanbanBoardComponent implements OnInit, OnDestroy {
   private readonly tasksService = inject(TasksService);
+  private readonly toasts = inject(ToastService);
   private readonly teamsService = inject(TeamsService);
   private readonly workflows = inject(WorkflowsService);
   private readonly projectsService = inject(ProjectsService);
@@ -63,6 +68,9 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
 
   private realtimeSub?: Subscription;
   private joinedTeamId: string | null = null;
+  private readonly teamLoad$ = new Subject<string>();
+  private readonly tasksReload$ = new Subject<{ teamId: string; after?: () => void }>();
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly priorities = TASK_PRIORITIES;
 
@@ -129,13 +137,76 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.companies.listMembers(1, 100).subscribe({
+    this.teamLoad$
+      .pipe(
+        tap((teamId) => {
+          if (this.joinedTeamId && this.joinedTeamId !== teamId) {
+            this.realtime.leaveTeam(this.joinedTeamId);
+          }
+          this.realtime.joinTeam(teamId);
+          this.joinedTeamId = teamId;
+          this.selectedTeamId.set(teamId);
+          this.filters.set({ ...EMPTY_FILTERS });
+          this.taskLabelMap.set(new Map());
+          this.loading.set(true);
+          this.error.set(null);
+        }),
+        switchMap((teamId) =>
+          forkJoin({
+            workflow: this.workflows.get(teamId),
+            projects: this.projectsService.list({ teamId, pageSize: 100 }),
+            epics: this.epicsService.list({ teamId, pageSize: 100 }),
+            sprints: this.sprintsService.list({ teamId, pageSize: 100 }),
+            tasks: this.tasksService.list({ teamId, pageSize: 200 })
+          }).pipe(
+            catchError((err) => {
+              this.error.set(apiErrorMessage(err, 'Failed to load board.'));
+              return of(null);
+            }),
+            finalize(() => this.loading.set(false))
+          )
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((result) => {
+        if (!result) return;
+        this.states.set(result.workflow.states);
+        this.projects.set(result.projects.items);
+        this.epics.set(result.epics.items);
+        this.sprints.set(result.sprints.items);
+        this.tasks.set(result.tasks.items);
+        this.openDeepLinkedTask();
+      });
+
+    this.tasksReload$
+      .pipe(
+        switchMap(({ teamId, after }) =>
+          this.tasksService.list({ teamId, pageSize: 200 }).pipe(
+            tap((res) => {
+              this.tasks.set(res.items);
+              this.loading.set(false);
+              after?.();
+            }),
+            catchError((err) => {
+              this.error.set(apiErrorMessage(err, 'Failed to reload tasks.'));
+              this.loading.set(false);
+              return of(null);
+            })
+          )
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+
+    this.companies.listMembers(1, 100).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => this.companyMembers.set(res.items)
     });
-    this.labelsService.list().subscribe({ next: (res) => this.labels.set(res.items) });
+    this.labelsService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => this.labels.set(res.items)
+    });
     this.loadSavedViews();
 
-    this.teamsService.list().subscribe({
+    this.teamsService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
         this.teams.set(res.items);
         const requestedTeamId = this.route.snapshot.queryParamMap.get('teamId');
@@ -160,47 +231,13 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   }
 
   selectTeam(teamId: string): void {
-    if (this.joinedTeamId && this.joinedTeamId !== teamId) {
-      this.realtime.leaveTeam(this.joinedTeamId);
-    }
-    this.realtime.joinTeam(teamId);
-    this.joinedTeamId = teamId;
-
-    this.selectedTeamId.set(teamId);
-    this.filters.set({ ...EMPTY_FILTERS });
-    this.taskLabelMap.set(new Map());
-    this.loading.set(true);
-    this.error.set(null);
-
-    this.workflows.get(teamId).subscribe({
-      next: (workflow) => this.states.set(workflow.states),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to load workflow.')
-    });
-
-    this.projectsService.list({ teamId, pageSize: 100 }).subscribe({
-      next: (res) => this.projects.set(res.items)
-    });
-    this.epicsService.list({ teamId, pageSize: 100 }).subscribe({
-      next: (res) => this.epics.set(res.items)
-    });
-    this.sprintsService.list({ teamId, pageSize: 100 }).subscribe({
-      next: (res) => this.sprints.set(res.items)
-    });
-
-    this.reloadTasks(() => this.openDeepLinkedTask());
+    this.teamLoad$.next(teamId);
   }
 
   reloadTasks(after?: () => void): void {
     const teamId = this.selectedTeamId();
     if (!teamId) return;
-    this.tasksService.list({ teamId, pageSize: 200 }).subscribe({
-      next: (res) => {
-        this.tasks.set(res.items);
-        this.loading.set(false);
-        after?.();
-      },
-      error: () => this.loading.set(false)
-    });
+    this.tasksReload$.next({ teamId, after });
   }
 
   setFilter(key: keyof BoardFilters, value: string): void {
@@ -268,7 +305,7 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
           this.saveViewOpen.set(false);
           this.saveViewForm.reset({ name: '', isShared: false });
         },
-        error: (err) => this.error.set(err.error?.description ?? 'Failed to save view.')
+        error: (err) => this.error.set(apiErrorMessage(err, 'Failed to save view.'))
       });
   }
 
@@ -302,7 +339,7 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
           this.creating.set(false);
         },
         error: (err) => {
-          this.error.set(err.error?.description ?? 'Failed to create task.');
+          this.error.set(apiErrorMessage(err, 'Failed to create task.'));
           this.creating.set(false);
         }
       });
@@ -340,7 +377,12 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.pendingMoveIds.delete(task.id);
         this.tasks.set(previous);
-        this.error.set(err.error?.description ?? 'Failed to move task.');
+
+        // The card snaps back on its own, which is easy to miss — and the inline alert sits at
+        // the top of a board the user may have scrolled past. Toast it so the revert is explained.
+        const message = apiErrorMessage(err, 'Failed to move task.');
+        this.error.set(message);
+        this.toasts.error(message);
       }
     });
   }

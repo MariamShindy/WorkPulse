@@ -47,6 +47,14 @@ export class ReportsService {
     return this.export(`${this.base}/export/summary/pdf`, filter);
   }
 
+  exportCycleTimeCsv(filter: ReportFilter = {}): Observable<HttpResponse<Blob>> {
+    return this.export(`${this.base}/export/cycle-time/csv`, filter);
+  }
+
+  exportAnalyticsSummaryPdf(filter: ReportFilter = {}): Observable<HttpResponse<Blob>> {
+    return this.export(`${this.base}/export/analytics-summary/pdf`, filter);
+  }
+
   /** Triggers a browser download for an export response. */
   downloadBlob(response: HttpResponse<Blob>, fallbackName: string): void {
     const disposition = response.headers.get('Content-Disposition') ?? '';

@@ -18,13 +18,13 @@ public sealed class GetSprintBacklogQueryHandler(
 			return tenantCheck.Error;
 		}
 
-		if (!await context.Teams.AnyAsync(team => team.Id == request.TeamId, cancellationToken))
+		if (!await context.Teams.AsNoTracking().ForTenant(tenantContext).AnyAsync(team => team.Id == request.TeamId, cancellationToken))
 		{
 			return Error.NotFound(TeamErrors.NotFoundCode, "Team not found.");
 		}
 
 		if (request.SprintId.HasValue &&
-		    !await context.Sprints.AnyAsync(
+		    !await context.Sprints.AsNoTracking().ForTenant(tenantContext).AnyAsync(
 			    sprint => sprint.Id == request.SprintId && sprint.TeamId == request.TeamId,
 			    cancellationToken))
 		{
@@ -54,10 +54,10 @@ public sealed class GetSprintBacklogQueryHandler(
 	private IQueryable<BacklogRow> BuildBacklogQuery(GetSprintBacklogQuery request)
 	{
 		var query =
-			from task in context.TaskItems.AsNoTracking()
-			join team in context.Teams.AsNoTracking() on task.TeamId equals team.Id
-			join state in context.WorkflowStates.AsNoTracking() on task.WorkflowStateId equals state.Id
-			join project in context.Projects.AsNoTracking() on task.ProjectId equals project.Id into projects
+			from task in context.TaskItems.AsNoTracking().ForTenant(tenantContext)
+			join team in context.Teams.AsNoTracking().ForTenant(tenantContext) on task.TeamId equals team.Id
+			join state in context.WorkflowStates.AsNoTracking().ForTenant(tenantContext) on task.WorkflowStateId equals state.Id
+			join project in context.Projects.AsNoTracking().ForTenant(tenantContext) on task.ProjectId equals project.Id into projects
 			from project in projects.DefaultIfEmpty()
 			where task.TeamId == request.TeamId
 			select new BacklogRow(task, team, state, project);

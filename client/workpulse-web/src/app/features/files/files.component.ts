@@ -8,6 +8,7 @@ import { PagedList, Project, StoredFile, TaskItem, Team } from '../../core/model
 import { PaginatorComponent } from '../../shared/paginator/paginator.component';
 import { EmptyStateComponent } from '../../shared/empty-state/empty-state.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog.component';
+import { apiErrorMessage } from '../../core/utils/api-error';
 
 type FileEntityKind = 'Task' | 'Project' | 'Team';
 
@@ -84,7 +85,7 @@ export class FilesComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Failed to load files.');
+        this.error.set(apiErrorMessage(err, 'Failed to load files.'));
         this.loading.set(false);
       }
     });
@@ -100,7 +101,7 @@ export class FilesComponent implements OnInit {
         this.load(this.paged()?.page ?? 1);
       },
       error: (err) => {
-        this.error.set(err.error?.description ?? 'Upload failed (10 MB limit).');
+        this.error.set(apiErrorMessage(err, 'Upload failed (10 MB limit).'));
         this.uploading.set(false);
       }
     });
@@ -119,7 +120,7 @@ export class FilesComponent implements OnInit {
     this.deleteTarget.set(null);
     this.filesService.delete(file.id).subscribe({
       next: () => this.load(this.paged()?.page ?? 1),
-      error: (err) => this.error.set(err.error?.description ?? 'Failed to delete file.')
+      error: (err) => this.error.set(apiErrorMessage(err, 'Failed to delete file.'))
     });
   }
 

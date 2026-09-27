@@ -3,9 +3,12 @@ using WorkPulse.Application.Abstractions.Options;
 using WorkPulse.Application.Collaboration.Services;
 using WorkPulse.Application.Files.Dtos;
 
+using WorkPulse.Application.Files;
+using WorkPulse.Application.Files.Services;
+
 namespace WorkPulse.Application.Files.Commands.UploadFile;
 
-public sealed class UploadFileCommandHandler(IApplicationDbContext context, IFileStorageService storage, ITenantContext tenantContext, ICurrentUserService currentUser, ITaskCollaborationService collaboration, IOptions<FileStorageOptions> options) : IRequestHandler<UploadFileCommand, Result<StoredFileDto>>
+public sealed class UploadFileCommandHandler(IApplicationDbContext context, IFileStorageService storage, ITenantContext tenantContext, ICurrentUserService currentUser, ITaskCollaborationService collaboration, IOptions<FileStorageOptions> options, IDateTime dateTime) : IRequestHandler<UploadFileCommand, Result<StoredFileDto>>
 {
 	public async Task<Result<StoredFileDto>> Handle(UploadFileCommand request, CancellationToken ct)
 	{
@@ -22,6 +25,13 @@ public sealed class UploadFileCommandHandler(IApplicationDbContext context, IFil
 		{
 			return Error.Validation("Files.InvalidType", "Content type '" + request.ContentType + "' is not allowed.");
 		}
+		// The declared type is client-controlled, so confirm the bytes agree with it before storing.
+		if (!(await FileSignatureValidator.MatchesDeclaredTypeAsync(request.Content, request.ContentType, ct)))
+		{
+			return Error.Validation(
+				"Files.ContentMismatch",
+				"File contents do not match the declared type '" + request.ContentType + "'.");
+		}
 		if (!(await EntityExistsAsync(context, request.EntityType, request.EntityId, ct)))
 		{
 			return Error.NotFound("Files.EntityNotFound", "Linked entity not found.");
@@ -37,7 +47,8 @@ public sealed class UploadFileCommandHandler(IApplicationDbContext context, IFil
 			StorageKey = storageKey,
 			UploadedById = currentUser.UserId.Value,
 			EntityType = request.EntityType,
-			EntityId = request.EntityId
+			EntityId = request.EntityId,
+			CreatedAtUtc = dateTime.UtcNow
 		};
 		context.StoredFiles.Add(file);
 		if (request.EntityType == FileEntityType.Task)
@@ -47,7 +58,7 @@ public sealed class UploadFileCommandHandler(IApplicationDbContext context, IFil
 				fileId = file.Id
 			}, ct);
 		}
-		return new StoredFileDto(file.Id, file.FileName, file.ContentType, file.SizeBytes, storage.GetPublicUrl(storageKey), file.EntityType.ToString(), file.EntityId, file.UploadedById, file.CreatedAtUtc);
+		return new StoredFileDto(file.Id, file.FileName, file.ContentType, file.SizeBytes, FileUrls.Download(file.Id), file.EntityType.ToString(), file.EntityId, file.UploadedById, file.CreatedAtUtc);
 	}
 
 	private static Task<bool> EntityExistsAsync(IApplicationDbContext context, FileEntityType entityType, Guid entityId, CancellationToken ct)

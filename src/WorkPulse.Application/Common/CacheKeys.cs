@@ -27,4 +27,19 @@ public static class CacheKeys
 	{
 		return $"analytics:{tenantId}:";
 	}
+
+	public static string CycleTimeAnalytics(Guid tenantId, Guid? teamId, DateOnly? from, DateOnly? to)
+	{
+		return $"analytics:cycletime:{tenantId}:{teamId}:{from}:{to}";
+	}
+
+	public static string Throughput(Guid tenantId, Guid? teamId, string granularity, int periods)
+	{
+		return $"analytics:throughput:{tenantId}:{teamId}:{granularity}:{periods}";
+	}
+
+	public static string SprintBurndown(Guid tenantId, Guid sprintId)
+	{
+		return $"analytics:burndown:{tenantId}:{sprintId}";
+	}
 }

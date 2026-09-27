@@ -11,7 +11,8 @@ public sealed class PagedList<T>
 
 	public int TotalCount { get; }
 
-	public int TotalPages => (int)Math.Ceiling((double)TotalCount / (double)PageSize);
+	/// <summary>Guards against a zero page size from a directly-constructed instance.</summary>
+	public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling((double)TotalCount / (double)PageSize);
 
 	public bool HasPreviousPage => Page > 1;
 

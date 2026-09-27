@@ -6,7 +6,7 @@
   </div>
 
   @if (error()) {
-    <div class="alert alert-error" role="alert">{{ error() }}</div>
+    <div class="alert alert-error" role="alert" role="alert">{{ error() }}</div>
   }
 
   @if (loading()) {
@@ -14,12 +14,20 @@
       <div class="workspace-card skeleton"></div>
       <div class="workspace-card skeleton"></div>
     </div>
+  } @else if (companies().length === 0) {
+    <app-empty-state
+      icon="◎"
+      heading="No workspaces yet"
+      message="Create a workspace to start organizing teams and projects.">
+      <a class="btn btn-primary" routerLink="/onboarding/workspace">Create workspace</a>
+    </app-empty-state>
   } @else {
     <div class="workspace-list">
       @for (company of companies(); track company.id) {
         <button
           type="button"
           class="workspace-card"
+          [class.is-opening]="switchingId() === company.id"
           [disabled]="switchingId() !== null"
           (click)="select(company)"
         >
@@ -34,14 +42,16 @@
           </span>
           <span class="badge badge-accent">{{ company.role }}</span>
           @if (switchingId() === company.id) {
-            <span class="workspace-opening">Opening…</span>
+            <span class="spinner" aria-label="Opening"></span>
           }
         </button>
       }
     </div>
   }
 
-  <div class="workspace-actions">
-    <a class="btn btn-ghost" routerLink="/onboarding/workspace">Create a new workspace</a>
-  </div>
+  @if (!loading() && companies().length > 0) {
+    <div class="workspace-actions">
+      <a class="btn btn-ghost" routerLink="/onboarding/workspace">Create a new workspace</a>
+    </div>
+  }
 </section>

@@ -18,15 +18,17 @@ public sealed class MoveTaskCommandHandler(IApplicationDbContext context, ITenan
 		{
 			return Error.NotFound("Task.NotFound", "Task not found.");
 		}
-		if (!(await (from w in context.Workflows.AsNoTracking()
+		WorkflowStateType? newStateType = await (from w in context.Workflows.AsNoTracking()
 			join s in context.WorkflowStates.AsNoTracking() on w.Id equals s.WorkflowId
 			where w.TeamId == task.TeamId && s.Id == request.WorkflowStateId
-			select s.Id).AnyAsync(ct)))
+			select (WorkflowStateType?)s.Type).FirstOrDefaultAsync(ct);
+		if (newStateType is null)
 		{
 			return Error.Validation("Task.InvalidState", "Workflow state does not belong to this task's team.");
 		}
 		Guid previousStateId = task.WorkflowStateId;
 		task.WorkflowStateId = request.WorkflowStateId;
+		WorkflowStateTransition.Apply(task, newStateType.Value);
 		if (request.SortOrder.HasValue)
 		{
 			task.SortOrder = request.SortOrder.Value;
