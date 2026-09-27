@@ -1,8 +1,5 @@
-using System.Collections.Generic;
-using MediatR;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Behaviors;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Search.Dtos;
 
 namespace WorkPulse.Application.Search.Queries;

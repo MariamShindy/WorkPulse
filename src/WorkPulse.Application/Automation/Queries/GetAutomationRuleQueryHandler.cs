@@ -1,14 +1,5 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Automation.Commands;
 using WorkPulse.Application.Automation.Dtos;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Automation.Queries;
 
@@ -21,8 +12,8 @@ public sealed class GetAutomationRuleQueryHandler(IApplicationDbContext context,
 		{
 			return tenantCheck.Error;
 		}
-		AutomationRule rule = await context.AutomationRules.AsNoTracking().FirstOrDefaultAsync((AutomationRule r) => r.Id == request.RuleId, ct);
-		if (rule == null)
+		AutomationRule? rule = await context.AutomationRules.AsNoTracking().FirstOrDefaultAsync((AutomationRule r) => r.Id == request.RuleId, ct);
+		if (rule is null)
 		{
 			return Error.NotFound("Automation.NotFound", "Automation rule not found.");
 		}

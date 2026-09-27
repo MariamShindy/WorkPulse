@@ -1,13 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Infrastructure.Persistence;
 
 namespace WorkPulse.Infrastructure.Services;
 
@@ -44,7 +35,7 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 	public async Task<Result<UserIdentityDto>> ValidateCredentialsAsync(string email, string password, CancellationToken ct = default(CancellationToken))
 	{
 		string normalizedEmail = email.Trim().ToLowerInvariant();
-		ApplicationUser user = await userManager.FindByEmailAsync(normalizedEmail);
+		ApplicationUser? user = await userManager.FindByEmailAsync(normalizedEmail);
 		if (user == null)
 		{
 			return Error.Unauthorized("Auth.InvalidCredentials", "Invalid email or password.");
@@ -58,13 +49,13 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 
 	public async Task<UserIdentityDto?> GetByIdAsync(Guid userId, CancellationToken ct = default(CancellationToken))
 	{
-		ApplicationUser user = await userManager.FindByIdAsync(userId.ToString());
+		ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
 		return (user == null) ? null : MapUser(user);
 	}
 
 	public async Task<UserIdentityDto?> GetByEmailAsync(string email, CancellationToken ct = default(CancellationToken))
 	{
-		ApplicationUser user = await userManager.FindByEmailAsync(email.Trim().ToLowerInvariant());
+		ApplicationUser? user = await userManager.FindByEmailAsync(email.Trim().ToLowerInvariant());
 		return (user == null) ? null : MapUser(user);
 	}
 
@@ -86,7 +77,7 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 
 	public async Task<Result<UserIdentityDto>> UpdateProfileAsync(Guid userId, string firstName, string lastName, string? avatarUrl, CancellationToken ct = default(CancellationToken))
 	{
-		ApplicationUser user = await userManager.FindByIdAsync(userId.ToString());
+		ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
 		if (user == null)
 		{
 			return Error.NotFound("Auth.UserNotFound", "User not found.");
@@ -105,7 +96,7 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 
 	public async Task UpdateLastLoginAsync(Guid userId, CancellationToken ct = default(CancellationToken))
 	{
-		ApplicationUser user = await userManager.FindByIdAsync(userId.ToString());
+		ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
 		if (user != null)
 		{
 			user.LastLoginAtUtc = dateTime.UtcNow;
@@ -115,7 +106,7 @@ public sealed class IdentityUserService(UserManager<ApplicationUser> userManager
 
 	public async Task SetCurrentTenantAsync(Guid userId, Guid tenantId, CancellationToken ct = default(CancellationToken))
 	{
-		ApplicationUser user = await userManager.FindByIdAsync(userId.ToString());
+		ApplicationUser? user = await userManager.FindByIdAsync(userId.ToString());
 		if (user != null)
 		{
 			user.CurrentTenantId = tenantId;

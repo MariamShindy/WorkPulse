@@ -1,15 +1,5 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Auth.Commands.Register;
 using WorkPulse.Application.Auth.Dtos;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Application.Auth.Commands.AcceptInvite;
 
@@ -17,8 +7,8 @@ public sealed class AcceptInviteCommandHandler(IApplicationDbContext context, IC
 {
 	public async Task<Result<AuthResponseDto>> Handle(AcceptInviteCommand request, CancellationToken ct)
 	{
-		UserInvitation invitation = await context.UserInvitations.IgnoreQueryFilters().FirstOrDefaultAsync((UserInvitation i) => i.Token == request.Token, ct);
-		if (invitation == null)
+		UserInvitation? invitation = await context.UserInvitations.IgnoreQueryFilters().FirstOrDefaultAsync((UserInvitation i) => i.Token == request.Token, ct);
+		if (invitation is null)
 		{
 			return Error.NotFound("Invitation.NotFound", "Invitation not found.");
 		}
@@ -38,8 +28,8 @@ public sealed class AcceptInviteCommandHandler(IApplicationDbContext context, IC
 		UserIdentityDto user;
 		if (currentUser.IsAuthenticated && currentUser.UserId.HasValue)
 		{
-			UserIdentityDto existing = await userIdentity.GetByIdAsync(currentUser.UserId.Value, ct);
-			if ((object)existing == null)
+			UserIdentityDto? existing = await userIdentity.GetByIdAsync(currentUser.UserId.Value, ct);
+			if (existing is null)
 			{
 				return Error.NotFound("Auth.UserNotFound", "User not found.");
 			}
@@ -55,7 +45,8 @@ public sealed class AcceptInviteCommandHandler(IApplicationDbContext context, IC
 			{
 				return Error.Validation("Invitation.RegistrationRequired", "Password, first name, and last name are required to accept this invitation.");
 			}
-			if ((object)(await userIdentity.GetByEmailAsync(invitation.Email, ct)) != null)
+			UserIdentityDto? existingByEmail = await userIdentity.GetByEmailAsync(invitation.Email, ct);
+			if (existingByEmail is not null)
 			{
 				return Error.Conflict("Auth.EmailTaken", "An account with this email already exists. Please sign in and accept the invitation.");
 			}

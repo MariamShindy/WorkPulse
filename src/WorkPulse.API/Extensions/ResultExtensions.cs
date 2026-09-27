@@ -1,7 +1,3 @@
-using System;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.API.Extensions;
 

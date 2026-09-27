@@ -1,14 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.AiChat.Dtos;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Infrastructure.Persistence;
 
 namespace WorkPulse.Infrastructure.Services.Read;
 
@@ -25,7 +16,7 @@ public sealed class AiInsightsReadService(
     private async Task<HashSet<Guid>> GetCompletedStatesAsync(Guid tenantId, CancellationToken ct)
     {
         List<Guid> ids = await context.WorkflowStates.AsNoTracking()
-            .Where(s => s.TenantId == tenantId && (int)s.Type == 3)
+            .Where(s => s.TenantId == tenantId && s.Type == WorkflowStateType.Completed)
             .Select(s => s.Id)
             .ToListAsync(ct);
         return ids.ToHashSet();

@@ -1,15 +1,10 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.Application.Auth.Commands.Login;
 using WorkPulse.Application.Auth.Commands.RefreshToken;
 using WorkPulse.Application.Auth.Commands.Register;
 using WorkPulse.Application.Auth.Commands.RevokeToken;
 using WorkPulse.Application.Auth.Dtos;
-using WorkPulse.Application.Common.Result;
 
 using WorkPulse.API.Contracts.Auth;
 

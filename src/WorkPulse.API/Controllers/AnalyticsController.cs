@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Analytics.Dtos;
@@ -12,7 +6,6 @@ using WorkPulse.Application.Analytics.Queries.GetAssigneeWorkload;
 using WorkPulse.Application.Analytics.Queries.GetDashboardAnalytics;
 using WorkPulse.Application.Analytics.Queries.GetProjectProgress;
 using WorkPulse.Application.Analytics.Queries.GetTeamVelocity;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.API.Controllers;
 

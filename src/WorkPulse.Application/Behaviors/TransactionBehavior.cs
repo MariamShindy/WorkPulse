@@ -1,8 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.Extensions.Logging;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Domain.Repositories;
 
 namespace WorkPulse.Application.Behaviors;

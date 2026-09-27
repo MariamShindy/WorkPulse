@@ -1,5 +1,3 @@
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Common.Extensions;
 

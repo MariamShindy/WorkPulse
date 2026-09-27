@@ -1,9 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Auth.Dtos;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Auth.Commands.Register;
 

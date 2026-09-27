@@ -1,13 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Dtos;
 using WorkPulse.Application.WorkManagement.Commands.CreateSprint;
 using WorkPulse.Application.WorkManagement.Commands.DeleteSprint;
@@ -17,7 +11,6 @@ using WorkPulse.Application.WorkManagement.Queries.GetSprint;
 using WorkPulse.Application.WorkManagement.Queries.GetSprintBacklog;
 using WorkPulse.Application.WorkManagement.Queries.ListSprints;
 using WorkPulse.Domain.Enums;
-
 using WorkPulse.API.Contracts.WorkManagement;
 
 namespace WorkPulse.API.Controllers;

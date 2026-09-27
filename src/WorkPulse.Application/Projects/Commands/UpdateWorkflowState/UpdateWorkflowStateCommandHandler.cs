@@ -1,14 +1,4 @@
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Projects.Commands.UpdateWorkflowState;
 
@@ -21,13 +11,13 @@ public sealed class UpdateWorkflowStateCommandHandler(IApplicationDbContext cont
 		{
 			return tenantCheck.Error;
 		}
-		Workflow workflow = await context.Workflows.AsNoTracking().FirstOrDefaultAsync((Workflow w) => w.TeamId == request.TeamId && w.IsDefault, ct);
-		if (workflow == null)
+		Workflow? workflow = await context.Workflows.AsNoTracking().FirstOrDefaultAsync((Workflow w) => w.TeamId == request.TeamId && w.IsDefault, ct);
+		if (workflow is null)
 		{
 			return Error.NotFound("Workflow.NotFound", "Workflow not found.");
 		}
-		WorkflowState state = await context.WorkflowStates.FirstOrDefaultAsync((WorkflowState s) => s.Id == request.StateId && s.WorkflowId == workflow.Id, ct);
-		if (state == null)
+		WorkflowState? state = await context.WorkflowStates.FirstOrDefaultAsync((WorkflowState s) => s.Id == request.StateId && s.WorkflowId == workflow.Id, ct);
+		if (state is null)
 		{
 			return Error.NotFound("Workflow.StateNotFound", "Workflow state not found.");
 		}

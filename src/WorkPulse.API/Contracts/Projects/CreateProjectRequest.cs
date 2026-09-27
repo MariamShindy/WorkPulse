@@ -1,4 +1,3 @@
-using System;
 using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.API.Contracts.Projects;

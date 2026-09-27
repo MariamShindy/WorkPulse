@@ -1,10 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 
 namespace WorkPulse.API.Hubs;
@@ -93,7 +88,7 @@ public sealed class WorkPulseHub : Hub
 
 	public Task<IReadOnlyList<Guid>> GetOnlineUsers(Guid tenantId)
 	{
-		if (TenantOnlineUsers.TryGetValue(tenantId, out ConcurrentDictionary<Guid, byte> value))
+		if (TenantOnlineUsers.TryGetValue(tenantId, out ConcurrentDictionary<Guid, byte>? value))
 		{
 			return Task.FromResult((IReadOnlyList<Guid>)value.Keys.ToList());
 		}
@@ -107,7 +102,7 @@ public sealed class WorkPulseHub : Hub
 
 	private static void MarkOffline(Guid tenantId, Guid userId)
 	{
-		if (TenantOnlineUsers.TryGetValue(tenantId, out ConcurrentDictionary<Guid, byte> value))
+		if (TenantOnlineUsers.TryGetValue(tenantId, out ConcurrentDictionary<Guid, byte>? value))
 		{
 			value.TryRemove(userId, out var _);
 		}
@@ -116,14 +111,14 @@ public sealed class WorkPulseHub : Hub
 	private Guid? ResolveTenantId()
 	{
 		HttpContext? httpContext = base.Context.GetHttpContext();
-		string input = ((httpContext != null) ? httpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault() : null);
+		string? input = httpContext?.Request.Headers["X-Tenant-Id"].FirstOrDefault();
 		Guid result;
 		return Guid.TryParse(input, out result) ? new Guid?(result) : ((Guid?)null);
 	}
 
 	private Guid? ResolveUserId()
 	{
-		string userIdentifier = base.Context.UserIdentifier;
+		string? userIdentifier = base.Context.UserIdentifier;
 		Guid result;
 		return Guid.TryParse(userIdentifier, out result) ? new Guid?(result) : ((Guid?)null);
 	}

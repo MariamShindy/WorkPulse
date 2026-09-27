@@ -1,19 +1,12 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.WorkManagement.Commands.CreateLabel;
 using WorkPulse.Application.WorkManagement.Commands.DeleteLabel;
 using WorkPulse.Application.WorkManagement.Commands.UpdateLabel;
 using WorkPulse.Application.WorkManagement.Dtos;
 using WorkPulse.Application.WorkManagement.Queries.ListLabels;
-
 using WorkPulse.API.Contracts.WorkManagement;
 
 namespace WorkPulse.API.Controllers;

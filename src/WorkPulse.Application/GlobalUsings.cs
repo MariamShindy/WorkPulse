@@ -1,0 +1,9 @@
+global using MediatR;
+global using Microsoft.EntityFrameworkCore;
+global using WorkPulse.Application.Abstractions;
+global using WorkPulse.Application.Abstractions.Persistence;
+global using WorkPulse.Application.Common;
+global using WorkPulse.Application.Common.Extensions;
+global using WorkPulse.Application.Common.Result;
+global using WorkPulse.Domain.Entities;
+global using WorkPulse.Domain.Enums;

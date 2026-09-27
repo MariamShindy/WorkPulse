@@ -1,12 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Projects.Commands.DeleteTask;
 
@@ -19,8 +10,8 @@ public sealed class DeleteTaskCommandHandler(IApplicationDbContext context, ITen
 		{
 			return tenantCheck.Error;
 		}
-		TaskItem task = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == request.TaskId, ct);
-		if (task == null)
+		TaskItem? task = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == request.TaskId, ct);
+		if (task is null)
 		{
 			return Error.NotFound("Task.NotFound", "Task not found.");
 		}

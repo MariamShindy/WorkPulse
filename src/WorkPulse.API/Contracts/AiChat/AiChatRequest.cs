@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using WorkPulse.Application.AiChat.Dtos;
 
 namespace WorkPulse.API.Contracts.AiChat;

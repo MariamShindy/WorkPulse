@@ -1,5 +1,3 @@
-using System.Linq;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Domain.Common;
 
 namespace WorkPulse.Application.Common.Extensions;

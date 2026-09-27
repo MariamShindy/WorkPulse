@@ -1,4 +1,3 @@
-using System;
 
 namespace WorkPulse.Infrastructure.Persistence.Outbox;
 

@@ -1,10 +1,4 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace WorkPulse.API.Middleware;
 
@@ -32,7 +26,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 		}
 		ProblemDetails problemDetails2 = problemDetails;
 		problemDetails2.Extensions["correlationId"] = context.Items["X-Correlation-Id"]?.ToString();
-		context.Response.StatusCode = problemDetails2.Status.Value;
+		context.Response.StatusCode = problemDetails2.Status ?? 500;
 		await context.Response.WriteAsJsonAsync(problemDetails2, ct);
 		return true;
 	}

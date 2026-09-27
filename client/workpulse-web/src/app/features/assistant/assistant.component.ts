@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AiService } from '../../core/services/ai.service';
 import { AiChatMessage } from '../../core/models';
+import { AssistantMarkdownPipe } from './assistant-markdown.pipe';
 
 interface ChatEntry {
   role: 'user' | 'assistant';
@@ -20,7 +21,7 @@ interface Suggestion {
 @Component({
   selector: 'app-assistant',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AssistantMarkdownPipe],
   templateUrl: './assistant.component.html',
   styleUrl: './assistant.component.scss'
 })
@@ -84,7 +85,7 @@ export class AssistantComponent {
       },
       error: (err) => {
         this.entries.update((list) => list.filter((e) => !e.pending));
-        this.error.set(err.error?.description ?? 'The assistant could not respond. Please try again.');
+        this.error.set(this.resolveError(err));
         this.sending.set(false);
       }
     });
@@ -111,5 +112,20 @@ export class AssistantComponent {
       case 'get_workspace_summary': return 'Workspace summary';
       default: return tool;
     }
+  }
+
+  private resolveError(err: { status?: number; error?: { detail?: string; description?: string; title?: string } }): string {
+    if (err.status === 401) {
+      return 'Your session expired. Please log in again, then retry.';
+    }
+    if (err.status === 0) {
+      return 'Could not reach the API. Check that the server and Ollama are running.';
+    }
+    // ASP.NET ProblemDetails uses `detail`; some older clients used `description`.
+    return (
+      err.error?.detail ??
+      err.error?.description ??
+      'The assistant could not respond. Please try again.'
+    );
   }
 }

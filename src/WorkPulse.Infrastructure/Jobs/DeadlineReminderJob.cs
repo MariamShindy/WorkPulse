@@ -1,15 +1,5 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Collaboration.Services;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
-using WorkPulse.Infrastructure.Persistence;
 
 namespace WorkPulse.Infrastructure.Jobs;
 
@@ -25,8 +15,12 @@ public sealed class DeadlineReminderJob(ApplicationDbContext db, UserManager<App
 			select new { t, team }).ToListAsync(ct);
 		foreach (var item in dueTasks)
 		{
+			if (!item.t.AssigneeId.HasValue)
+			{
+				continue;
+			}
 			Guid assigneeId = item.t.AssigneeId.Value;
-			ApplicationUser user = await userManager.FindByIdAsync(assigneeId.ToString());
+			ApplicationUser? user = await userManager.FindByIdAsync(assigneeId.ToString());
 			if (user?.Email != null)
 			{
 				string identifier = $"{item.team.Key}-{item.t.Number}";

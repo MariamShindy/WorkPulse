@@ -1,13 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.WorkManagement.Commands.CreateEpic;
 using WorkPulse.Application.WorkManagement.Commands.DeleteEpic;
 using WorkPulse.Application.WorkManagement.Commands.UpdateEpic;
@@ -15,7 +9,6 @@ using WorkPulse.Application.WorkManagement.Dtos;
 using WorkPulse.Application.WorkManagement.Queries.GetEpic;
 using WorkPulse.Application.WorkManagement.Queries.ListEpics;
 using WorkPulse.Domain.Enums;
-
 using WorkPulse.API.Contracts.WorkManagement;
 
 namespace WorkPulse.API.Controllers;

@@ -1,15 +1,9 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Contracts.AiChat;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.AiChat.Dtos;
 using WorkPulse.Application.AiChat.Queries.AskAiChat;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.API.Controllers;
 

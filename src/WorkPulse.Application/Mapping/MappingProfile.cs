@@ -1,6 +1,5 @@
 using AutoMapper;
 using WorkPulse.Application.Projects.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Mapping;
 
@@ -14,7 +13,7 @@ public sealed class MappingProfile : Profile
 		}).ForMember((TaskItemDto d) => d.Identifier, delegate(IMemberConfigurationExpression<TaskItem, TaskItemDto, string> opt)
 		{
 			opt.Ignore();
-		}).ForMember((TaskItemDto d) => d.ProjectKey, delegate(IMemberConfigurationExpression<TaskItem, TaskItemDto, string> opt)
+		}).ForMember((TaskItemDto d) => d.ProjectKey, delegate(IMemberConfigurationExpression<TaskItem, TaskItemDto, string?> opt)
 		{
 			opt.Ignore();
 		})

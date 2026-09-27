@@ -1,77 +1,76 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Dtos;
 using WorkPulse.Application.Projects.Services;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Projects.Commands.UpdateTask;
 
-public sealed class UpdateTaskCommandHandler(IApplicationDbContext context, ITenantContext tenantContext) : IRequestHandler<UpdateTaskCommand, Result<TaskItemDto>>
+public sealed class UpdateTaskCommandHandler(
+	IApplicationDbContext context,
+	ITenantContext tenantContext) : IRequestHandler<UpdateTaskCommand, Result<TaskItemDto>>
 {
-	public async Task<Result<TaskItemDto>> Handle(UpdateTaskCommand request, CancellationToken ct)
+	public async Task<Result<TaskItemDto>> Handle(UpdateTaskCommand request, CancellationToken cancellationToken)
 	{
 		Result tenantCheck = tenantContext.EnsureResolved();
 		if (tenantCheck.IsFailure)
 		{
 			return tenantCheck.Error;
 		}
-		TaskItem task = await context.TaskItems.FirstOrDefaultAsync((TaskItem t) => t.Id == request.TaskId, ct);
-		if (task == null)
+
+		TaskItem? task = await context.TaskItems.FirstOrDefaultAsync(item => item.Id == request.TaskId, cancellationToken);
+		if (task is null)
 		{
-			return Error.NotFound("Task.NotFound", "Task not found.");
+			return Error.NotFound(TaskErrors.NotFoundCode, "Task not found.");
 		}
-		if (request.RowVersion != null && !task.RowVersion.SequenceEqual(request.RowVersion))
+
+		if (request.RowVersion is not null && !task.RowVersion.SequenceEqual(request.RowVersion))
 		{
-			return Error.Conflict("Task.ConcurrencyConflict", "The task was modified by another user. Please refresh and try again.");
+			return Error.Conflict(TaskErrors.ConcurrencyCode, "The task was modified by another user. Please refresh and try again.");
 		}
-		bool hasValue = request.ProjectId.HasValue;
-		bool flag = hasValue;
-		if (flag)
+
+		Result validation = await ValidateRelatedEntitiesAsync(request, task.TeamId, cancellationToken);
+		if (validation.IsFailure)
 		{
-			flag = !(await context.Projects.AnyAsync((Project p) => p.Id == request.ProjectId && p.TeamId == task.TeamId, ct));
+			return validation.Error;
 		}
-		if (flag)
+
+		ApplyUpdates(task, request);
+		await SyncAssigneesIfRequestedAsync(task, request, cancellationToken);
+		return await TaskDtoMapper.MapTaskDtoAsync(context, task, cancellationToken);
+	}
+
+	private async Task<Result> ValidateRelatedEntitiesAsync(
+		UpdateTaskCommand request,
+		Guid teamId,
+		CancellationToken cancellationToken)
+	{
+		if (request.ProjectId.HasValue &&
+		    !await context.Projects.AnyAsync(project => project.Id == request.ProjectId && project.TeamId == teamId, cancellationToken))
 		{
-			return Error.NotFound("Project.NotFound", "Project not found.");
+			return Error.NotFound(ProjectErrors.NotFoundCode, "Project not found.");
 		}
-		bool hasValue2 = request.EpicId.HasValue;
-		bool flag2 = hasValue2;
-		if (flag2)
+
+		if (request.EpicId.HasValue &&
+		    !await context.Epics.AnyAsync(epic => epic.Id == request.EpicId && epic.TeamId == teamId, cancellationToken))
 		{
-			flag2 = !(await context.Epics.AnyAsync((Epic e) => e.Id == request.EpicId && e.TeamId == task.TeamId, ct));
+			return Error.NotFound(EpicErrors.NotFoundCode, "Epic not found.");
 		}
-		if (flag2)
+
+		if (request.SprintId.HasValue &&
+		    !await context.Sprints.AnyAsync(sprint => sprint.Id == request.SprintId && sprint.TeamId == teamId, cancellationToken))
 		{
-			return Error.NotFound("Epic.NotFound", "Epic not found.");
+			return Error.NotFound(SprintErrors.NotFoundCode, "Sprint not found.");
 		}
-		bool hasValue3 = request.SprintId.HasValue;
-		bool flag3 = hasValue3;
-		if (flag3)
+
+		if (request.AssignedTeamId.HasValue &&
+		    !await context.Teams.AnyAsync(team => team.Id == request.AssignedTeamId, cancellationToken))
 		{
-			flag3 = !(await context.Sprints.AnyAsync((Sprint s) => s.Id == request.SprintId && s.TeamId == task.TeamId, ct));
+			return Error.NotFound(TeamErrors.NotFoundCode, "Assigned team not found.");
 		}
-		if (flag3)
-		{
-			return Error.NotFound("Sprint.NotFound", "Sprint not found.");
-		}
-		bool hasValue4 = request.AssignedTeamId.HasValue;
-		bool flag4 = hasValue4;
-		if (flag4)
-		{
-			flag4 = !(await context.Teams.AnyAsync((Team t) => t.Id == request.AssignedTeamId, ct));
-		}
-		if (flag4)
-		{
-			return Error.NotFound("Team.NotFound", "Assigned team not found.");
-		}
+
+		return Result.Success();
+	}
+
+	private static void ApplyUpdates(TaskItem task, UpdateTaskCommand request)
+	{
 		task.Title = request.Title.Trim();
 		task.Description = request.Description?.Trim();
 		task.Priority = request.Priority;
@@ -85,11 +84,19 @@ public sealed class UpdateTaskCommandHandler(IApplicationDbContext context, ITen
 		task.EpicId = request.EpicId;
 		task.SprintId = request.SprintId;
 		task.AssignedTeamId = request.AssignedTeamId;
-		if (request.AssigneeIds != null)
+	}
+
+	private async Task SyncAssigneesIfRequestedAsync(
+		TaskItem task,
+		UpdateTaskCommand request,
+		CancellationToken cancellationToken)
+	{
+		if (request.AssigneeIds is null)
 		{
-			await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, task.Id, request.AssigneeIds, ct);
-			task.AssigneeId = request.AssigneeIds.FirstOrDefault();
+			return;
 		}
-		return await TaskDtoMapper.MapTaskDtoAsync(context, task, ct);
+
+		await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, task.Id, request.AssigneeIds, cancellationToken);
+		task.AssigneeId = request.AssigneeIds.FirstOrDefault();
 	}
 }

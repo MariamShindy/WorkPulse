@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs/operators';
-import { Observable } from 'rxjs';
+import { catchError, finalize, shareReplay, tap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, UserCompany, UserProfile } from '../models';
 import { TenantService } from './tenant.service';
@@ -21,6 +21,9 @@ export class AuthService {
   private readonly _refreshToken = signal<string | null>(localStorage.getItem(REFRESH_TOKEN_KEY));
   private readonly _user = signal<UserProfile | null>(this.readUser());
 
+  /** In-flight refresh so concurrent 401s share one /auth/refresh call. */
+  private refreshInFlight: Observable<AuthResponse> | null = null;
+
   readonly accessToken = computed(() => this._accessToken());
   readonly user = computed(() => this._user());
   readonly isAuthenticated = computed(() => !!this._accessToken());
@@ -28,6 +31,11 @@ export class AuthService {
     const u = this._user();
     return u ? `${u.firstName} ${u.lastName}`.trim() : '';
   });
+
+  /** Raw refresh token for the auth interceptor (avoids recursive HTTP). */
+  peekRefreshToken(): string | null {
+    return this._refreshToken();
+  }
 
   register(payload: {
     email: string;
@@ -60,6 +68,38 @@ export class AuthService {
       return;
     }
     this.clearSession();
+  }
+
+  /**
+   * Exchanges the stored refresh token for a new access token.
+   * On failure the session is cleared and the user is sent to login.
+   */
+  refreshSession(): Observable<AuthResponse> {
+    if (this.refreshInFlight) {
+      return this.refreshInFlight;
+    }
+
+    const refreshToken = this._refreshToken();
+    if (!refreshToken) {
+      this.clearSession();
+      return throwError(() => new Error('No refresh token'));
+    }
+
+    this.refreshInFlight = this.http
+      .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken })
+      .pipe(
+        tap((res) => this.persistSession(res)),
+        catchError((err) => {
+          this.clearSession();
+          return throwError(() => err);
+        }),
+        finalize(() => {
+          this.refreshInFlight = null;
+        }),
+        shareReplay(1)
+      );
+
+    return this.refreshInFlight;
   }
 
   private persistSession(response: AuthResponse): void {

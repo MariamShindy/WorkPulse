@@ -1,14 +1,4 @@
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.WorkManagement.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.WorkManagement.Queries.GetSavedView;
 
@@ -21,10 +11,10 @@ public sealed class GetSavedViewQueryHandler(IApplicationDbContext context, ITen
 		{
 			return tenantCheck.Error;
 		}
-		SavedViewDto view = await (from v in context.SavedViews.AsNoTracking()
+		SavedViewDto? view = await (from v in context.SavedViews.AsNoTracking()
 			where v.Id == request.SavedViewId
 			select new SavedViewDto(v.Id, v.UserId, v.Name, v.EntityType.ToString(), v.FiltersJson, v.SortJson, v.IsShared, v.CreatedAtUtc)).FirstOrDefaultAsync(ct);
-		if ((object)view == null)
+		if (view is null)
 		{
 			return Error.NotFound("SavedView.NotFound", "Saved view not found.");
 		}

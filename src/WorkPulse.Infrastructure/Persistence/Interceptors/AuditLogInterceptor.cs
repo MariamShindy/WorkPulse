@@ -1,15 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Domain.Common;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Infrastructure.Persistence.Interceptors;
 

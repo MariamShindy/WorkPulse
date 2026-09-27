@@ -1,13 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Organizations.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Organizations.Queries.GetTeam;
 
@@ -20,8 +11,8 @@ public sealed class GetTeamQueryHandler(IApplicationDbContext context, ITenantCo
 		{
 			return tenantCheck.Error;
 		}
-		Team team = await context.Teams.AsNoTracking().FirstOrDefaultAsync((Team t) => t.Id == request.TeamId, ct);
-		if (team == null)
+		Team? team = await context.Teams.AsNoTracking().FirstOrDefaultAsync((Team t) => t.Id == request.TeamId, ct);
+		if (team is null)
 		{
 			return Error.NotFound("Team.NotFound", "Team not found.");
 		}

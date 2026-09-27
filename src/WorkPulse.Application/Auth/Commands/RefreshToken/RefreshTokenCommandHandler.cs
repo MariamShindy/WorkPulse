@@ -1,11 +1,5 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Auth.Commands.Register;
 using WorkPulse.Application.Auth.Dtos;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Auth.Commands.RefreshToken;
 
@@ -19,8 +13,8 @@ public sealed class RefreshTokenCommandHandler(IUserIdentityService userIdentity
 			return validation.Error;
 		}
 		Guid userId = validation.Value;
-		UserIdentityDto user = await userIdentity.GetByIdAsync(userId, ct);
-		if ((object)user == null)
+		UserIdentityDto? user = await userIdentity.GetByIdAsync(userId, ct);
+		if (user is null)
 		{
 			return Error.NotFound("Auth.UserNotFound", "User not found.");
 		}

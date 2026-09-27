@@ -1,18 +1,10 @@
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Infrastructure.Services;
 
@@ -60,7 +52,7 @@ public sealed class JwtTokenService(IApplicationDbContext context, IDateTime dat
 
 	public async Task<Result<Guid>> ValidateRefreshTokenAsync(string token, CancellationToken ct = default(CancellationToken))
 	{
-		RefreshToken refreshToken = await context.RefreshTokens.AsNoTracking().FirstOrDefaultAsync((RefreshToken t) => t.Token == token, ct);
+		RefreshToken? refreshToken = await context.RefreshTokens.AsNoTracking().FirstOrDefaultAsync((RefreshToken t) => t.Token == token, ct);
 		if (refreshToken == null)
 		{
 			return Error.Unauthorized("Auth.InvalidRefreshToken", "Invalid refresh token.");
@@ -78,8 +70,8 @@ public sealed class JwtTokenService(IApplicationDbContext context, IDateTime dat
 
 	public async Task RevokeRefreshTokenAsync(string token, CancellationToken ct = default(CancellationToken))
 	{
-		RefreshToken refreshToken = await context.RefreshTokens.FirstOrDefaultAsync((RefreshToken t) => t.Token == token, ct);
-		if (!(refreshToken?.RevokedAtUtc.HasValue ?? true))
+		RefreshToken? refreshToken = await context.RefreshTokens.FirstOrDefaultAsync((RefreshToken t) => t.Token == token, ct);
+		if (refreshToken != null && !refreshToken.RevokedAtUtc.HasValue)
 		{
 			refreshToken.RevokedAtUtc = dateTime.UtcNow;
 		}

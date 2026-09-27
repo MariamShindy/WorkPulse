@@ -1,12 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.WorkManagement.Commands.DeleteSavedView;
 
@@ -23,8 +14,8 @@ public sealed class DeleteSavedViewCommandHandler(IApplicationDbContext context,
 		{
 			return Error.Unauthorized("Auth.Unauthorized", "Authentication is required.");
 		}
-		SavedView view = await context.SavedViews.FirstOrDefaultAsync((SavedView v) => v.Id == request.SavedViewId, ct);
-		if (view == null)
+		SavedView? view = await context.SavedViews.FirstOrDefaultAsync((SavedView v) => v.Id == request.SavedViewId, ct);
+		if (view is null)
 		{
 			return Error.NotFound("SavedView.NotFound", "Saved view not found.");
 		}

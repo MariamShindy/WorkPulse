@@ -1,13 +1,8 @@
-using System;
-using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Domain.Common;
-using WorkPulse.Domain.Entities;
 using WorkPulse.Infrastructure.Persistence.Interceptors;
 using WorkPulse.Infrastructure.Persistence.Outbox;
 
@@ -84,26 +79,26 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 	{
 		foreach (IMutableEntityType entityType in builder.Model.GetEntityTypes())
 		{
-			string tableName = entityType.GetTableName();
+			string? tableName = entityType.GetTableName();
 			if (tableName != null)
 			{
 				entityType.SetTableName(ToSnakeCase(tableName));
 			}
 			foreach (IMutableProperty property in entityType.GetProperties())
 			{
-				property.SetColumnName(ToSnakeCase(property.GetColumnName()));
+				property.SetColumnName(ToSnakeCase(property.GetColumnName() ?? string.Empty));
 			}
 			foreach (IMutableKey key in entityType.GetKeys())
 			{
-				key.SetName(ToSnakeCase(key.GetName()));
+				key.SetName(ToSnakeCase(key.GetName() ?? string.Empty));
 			}
 			foreach (IMutableForeignKey foreignKey in entityType.GetForeignKeys())
 			{
-				foreignKey.SetConstraintName(ToSnakeCase(foreignKey.GetConstraintName()));
+				foreignKey.SetConstraintName(ToSnakeCase(foreignKey.GetConstraintName() ?? string.Empty));
 			}
 			foreach (IMutableIndex index in entityType.GetIndexes())
 			{
-				index.SetDatabaseName(ToSnakeCase(index.GetDatabaseName()));
+				index.SetDatabaseName(ToSnakeCase(index.GetDatabaseName() ?? string.Empty));
 			}
 		}
 	}
@@ -125,12 +120,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 			Type clrType = entityType.ClrType;
 			if (typeof(ITenantEntity).IsAssignableFrom(clrType))
 			{
-				MethodInfo methodInfo = typeof(ApplicationDbContext).GetMethod("SetTenantFilter", BindingFlags.Instance | BindingFlags.NonPublic).MakeGenericMethod(clrType);
+				MethodInfo methodInfo = typeof(ApplicationDbContext).GetMethod("SetTenantFilter", BindingFlags.Instance | BindingFlags.NonPublic)!.MakeGenericMethod(clrType);
 				methodInfo.Invoke(this, new object[1] { builder });
 			}
 			if (typeof(ISoftDeletable).IsAssignableFrom(clrType))
 			{
-				MethodInfo methodInfo2 = typeof(ApplicationDbContext).GetMethod("SetSoftDeleteFilter", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(clrType);
+				MethodInfo methodInfo2 = typeof(ApplicationDbContext).GetMethod("SetSoftDeleteFilter", BindingFlags.Static | BindingFlags.NonPublic)!.MakeGenericMethod(clrType);
 				methodInfo2.Invoke(null, new object[1] { builder });
 			}
 		}

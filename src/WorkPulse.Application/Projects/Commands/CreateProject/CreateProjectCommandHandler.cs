@@ -1,15 +1,5 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
 using WorkPulse.Application.Common;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Projects.Commands.CreateProject;
 
@@ -22,8 +12,8 @@ public sealed class CreateProjectCommandHandler(IApplicationDbContext context, I
 		{
 			return tenantCheck.Error;
 		}
-		Team team = await context.Teams.AsNoTracking().FirstOrDefaultAsync((Team t) => t.Id == request.TeamId, ct);
-		if (team == null)
+		Team? team = await context.Teams.AsNoTracking().FirstOrDefaultAsync((Team t) => t.Id == request.TeamId, ct);
+		if (team is null)
 		{
 			return Error.NotFound("Team.NotFound", "Team not found.");
 		}

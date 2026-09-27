@@ -1,26 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using WorkPulse.Application.Organizations.Services;
 using WorkPulse.Domain.Common;
-using WorkPulse.Domain.Entities;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Infrastructure.Persistence.Seed;
 
-public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ILogger<DevDataSeeder> logger)
+public sealed class DevDataSeeder(
+	ApplicationDbContext dbContext,
+	UserManager<ApplicationUser> userManager,
+	ILogger<DevDataSeeder> logger)
 {
-	private sealed record SeedUser(string Key, ApplicationUser User, CompanyMemberRole Role);
-
-	private sealed record SeedTeam(Team Team, Dictionary<string, WorkflowState> StatesByName, TeamIssueCounter Counter);
-
-	private sealed record TaskSeed(string Team, string Title, string State, TaskPriority Priority, string? Project = null, string? Epic = null, int Sprint = -1, string? Assignee = null, string[]? CoAssignees = null, int? Points = null, decimal? EstHours = null, int? DueInDays = null, bool Blocked = false, string? BlockedReason = null, string[]? Labels = null, string? Parent = null, int AgeDays = 20);
-
 	public const string DemoCompanySlug = "workpulse-demo";
 
 	public const string DemoEmail = "demo@workpulse.local";
@@ -29,19 +17,20 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 
 	private readonly DateTime _now = DateTime.UtcNow;
 
-	private readonly Random _random = new Random(20260704);
+	private readonly Random _random = new(20260704);
 
-	private readonly List<(AuditableEntity Entity, DateTime CreatedAtUtc)> _createdAt = new List<(AuditableEntity, DateTime)>();
+	private readonly List<(AuditableEntity Entity, DateTime CreatedAtUtc)> _createdAt = [];
 
 	private DateOnly Today => DateOnly.FromDateTime(_now);
 
-	public async Task SeedAsync(CancellationToken ct = default(CancellationToken))
+	public async Task SeedAsync(CancellationToken cancellationToken = default)
 	{
-		if (await db.Companies.AnyAsync((Company c) => c.Slug == "workpulse-demo", ct))
+		if (await dbContext.Companies.AnyAsync(company => company.Slug == DemoCompanySlug, cancellationToken))
 		{
 			logger.LogInformation("Dev seed skipped: demo company already exists.");
 			return;
 		}
+
 		logger.LogInformation("Seeding development demo data…");
 		Guid companyId = Guid.NewGuid();
 		Dictionary<string, SeedUser> users = await CreateUsersAsync(companyId);
@@ -58,54 +47,57 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 		CreateSavedViews(companyId, users);
 		CreateAutomationRules(companyId);
 		CreateAuditLog(companyId, tasks, teams, users);
-		await db.SaveChangesAsync(ct);
-		await ApplyOrganicTimestampsAsync(companyId, ct);
-		logger.LogInformation("Dev seed complete: company '{Slug}', {Users} users, {Teams} teams, {Projects} projects, {Tasks} tasks. Login: {Email} / {Password}", "workpulse-demo", users.Count, teams.Count, projects.Count, tasks.Count, "demo@workpulse.local", "Demo1234!");
+		await dbContext.SaveChangesAsync(cancellationToken);
+		await ApplyOrganicTimestampsAsync(companyId, cancellationToken);
+		logger.LogInformation(
+			"Dev seed complete: company '{Slug}', {Users} users, {Teams} teams, {Projects} projects, {Tasks} tasks. Login: {Email} / {Password}",
+			DemoCompanySlug,
+			users.Count,
+			teams.Count,
+			projects.Count,
+			tasks.Count,
+			DemoEmail,
+			DemoPassword);
 	}
 
 	private async Task<Dictionary<string, SeedUser>> CreateUsersAsync(Guid companyId)
 	{
-		(string Key, string Email, string First, string Last, CompanyMemberRole Role, int AgeDays)[] specs = new(string, string, string, string, CompanyMemberRole, int)[6]
-		{
-			("demo", "demo@workpulse.local", "Demo", "Anderson", CompanyMemberRole.Owner, 58),
+		(string Key, string Email, string First, string Last, CompanyMemberRole Role, int AgeDays)[] userSpecs =
+		[
+			("demo", DemoEmail, "Demo", "Anderson", CompanyMemberRole.Owner, 58),
 			("alice", "alice.johnson@workpulse.local", "Alice", "Johnson", CompanyMemberRole.Admin, 56),
 			("bob", "bob.martinez@workpulse.local", "Bob", "Martinez", CompanyMemberRole.Member, 54),
 			("carol", "carol.chen@workpulse.local", "Carol", "Chen", CompanyMemberRole.Member, 52),
 			("david", "david.kim@workpulse.local", "David", "Kim", CompanyMemberRole.Member, 49),
 			("emma", "emma.wilson@workpulse.local", "Emma", "Wilson", CompanyMemberRole.Admin, 47)
-		};
-		Dictionary<string, SeedUser> result = new Dictionary<string, SeedUser>();
-		(string Key, string Email, string First, string Last, CompanyMemberRole Role, int AgeDays)[] array = specs;
-		for (int i = 0; i < array.Length; i++)
+		];
+
+		Dictionary<string, SeedUser> usersByKey = [];
+		foreach (var (key, email, firstName, lastName, role, ageDays) in userSpecs)
 		{
-			(string, string, string, string, CompanyMemberRole, int) tuple = array[i];
-			string key = tuple.Item1;
-			string email = tuple.Item2;
-			string first = tuple.Item3;
-			string last = tuple.Item4;
-			CompanyMemberRole role = tuple.Item5;
-			int ageDays = tuple.Item6;
 			ApplicationUser user = new ApplicationUser
 			{
 				Id = Guid.NewGuid(),
 				UserName = email,
 				Email = email,
-				FirstName = first,
-				LastName = last,
+				FirstName = firstName,
+				LastName = lastName,
 				EmailConfirmed = true,
 				IsActive = true,
 				CurrentTenantId = companyId,
 				CreatedAtUtc = _now.AddDays(-ageDays),
 				LastLoginAtUtc = _now.AddDays(-_random.Next(0, 5)).AddHours(-_random.Next(0, 12))
 			};
-			IdentityResult identityResult = await userManager.CreateAsync(user, "Demo1234!");
+			IdentityResult identityResult = await userManager.CreateAsync(user, DemoPassword);
 			if (!identityResult.Succeeded)
 			{
-				throw new InvalidOperationException("Dev seed failed to create user " + email + ": " + string.Join("; ", identityResult.Errors.Select((IdentityError e) => e.Description)));
+				throw new InvalidOperationException(
+					"Dev seed failed to create user " + email + ": " +
+					string.Join("; ", identityResult.Errors.Select(error => error.Description)));
 			}
-			result[key] = new SeedUser(key, user, role);
+			usersByKey[key] = new SeedUser(key, user, role);
 		}
-		return result;
+		return usersByKey;
 	}
 
 	private void CreateCompany(Guid companyId, Dictionary<string, SeedUser> users)
@@ -118,7 +110,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 			Description = "A fully populated demo workspace showing WorkPulse features.",
 			IsActive = true
 		};
-		db.Companies.Add(company);
+		dbContext.Companies.Add(company);
 		_createdAt.Add((company, _now.AddDays(-58.0)));
 		foreach (SeedUser value in users.Values)
 		{
@@ -130,7 +122,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				Role = value.Role,
 				IsActive = true
 			};
-			db.CompanyMembers.Add(companyMember);
+			dbContext.CompanyMembers.Add(companyMember);
 			_createdAt.Add((companyMember, value.User.CreatedAtUtc.AddMinutes(30.0)));
 		}
 	}
@@ -181,7 +173,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				Color = item3,
 				Icon = item4
 			};
-			db.Teams.Add(team);
+			dbContext.Teams.Add(team);
 			_createdAt.Add((team, item7));
 			TeamIssueCounter teamIssueCounter = new TeamIssueCounter
 			{
@@ -189,10 +181,10 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				TenantId = companyId,
 				LastNumber = 0
 			};
-			db.TeamIssueCounters.Add(teamIssueCounter);
+			dbContext.TeamIssueCounters.Add(teamIssueCounter);
 			var (workflow, readOnlyList) = DefaultWorkflowFactory.Create(companyId, team.Id);
-			db.Workflows.Add(workflow);
-			db.WorkflowStates.AddRange(readOnlyList);
+			dbContext.Workflows.Add(workflow);
+			dbContext.WorkflowStates.AddRange(readOnlyList);
 			_createdAt.Add((workflow, item7));
 			foreach (WorkflowState item10 in readOnlyList)
 			{
@@ -212,7 +204,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 					UserId = users[item8].User.Id,
 					Role = item9
 				};
-				db.TeamMembers.Add(teamMember);
+				dbContext.TeamMembers.Add(teamMember);
 				_createdAt.Add((teamMember, item7.AddHours(2.0)));
 			}
 			dictionary[item2] = new SeedTeam(team, readOnlyList.ToDictionary((WorkflowState s) => s.Name), teamIssueCounter);
@@ -257,7 +249,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				StartDate = Today.AddDays(-item6),
 				TargetDate = (item7.HasValue ? new DateOnly?(Today.AddDays(item7.Value)) : ((DateOnly?)null))
 			};
-			db.Projects.Add(project);
+			dbContext.Projects.Add(project);
 			_createdAt.Add((project, _now.AddDays(-item8)));
 			dictionary[item3] = project;
 		}
@@ -295,7 +287,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				Description = "Epic: " + item3 + ".",
 				Status = item4
 			};
-			db.Epics.Add(epic);
+			dbContext.Epics.Add(epic);
 			_createdAt.Add((epic, _now.AddDays(-item5)));
 			dictionary[item + ":" + item2] = epic;
 		}
@@ -332,7 +324,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				EndDate = Today.AddDays(8),
 				Status = SprintStatus.Active
 			};
-			db.Sprints.AddRange(sprint, sprint2);
+			dbContext.Sprints.AddRange(sprint, sprint2);
 			_createdAt.Add((sprint, _now.AddDays(-28.0)));
 			_createdAt.Add((sprint2, _now.AddDays(-7.0)));
 			dictionary[text] = new Sprint[2] { sprint, sprint2 };
@@ -367,7 +359,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				Name = item,
 				Color = item2
 			};
-			db.Labels.Add(label);
+			dbContext.Labels.Add(label);
 			_createdAt.Add((label, _now.AddDays(-45 - _random.Next(0, 6))));
 			dictionary[item] = label;
 		}
@@ -556,7 +548,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				EpicId = ((taskSeed.Epic == null) ? ((Guid?)null) : new Guid?(epics[taskSeed.Epic].Id)),
 				SprintId = ((taskSeed.Sprint >= 0) ? new Guid?(sprints[taskSeed.Team][taskSeed.Sprint].Id) : ((Guid?)null))
 			};
-			db.TaskItems.Add(taskItem);
+			dbContext.TaskItems.Add(taskItem);
 			_createdAt.Add((taskItem, item));
 			foreach (Guid item2 in list)
 			{
@@ -567,7 +559,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 					TaskId = taskItem.Id,
 					UserId = item2
 				};
-				db.TaskAssignees.Add(taskAssignee);
+				dbContext.TaskAssignees.Add(taskAssignee);
 				_createdAt.Add((taskAssignee, item.AddHours(1.0)));
 			}
 			string[] array5 = taskSeed.Labels ?? Array.Empty<string>();
@@ -580,7 +572,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 					TaskId = taskItem.Id,
 					LabelId = labels[key3].Id
 				};
-				db.TaskLabels.Add(taskLabel);
+				dbContext.TaskLabels.Add(taskLabel);
 				_createdAt.Add((taskLabel, item.AddHours(1.0)));
 			}
 			dictionary[taskSeed.Title] = taskItem;
@@ -613,7 +605,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				DependsOnTaskId = tasks[item2].Id,
 				Type = item3
 			};
-			db.TaskDependencies.Add(taskDependency);
+			dbContext.TaskDependencies.Add(taskDependency);
 			_createdAt.Add((taskDependency, _now.AddDays(-_random.Next(3, 15))));
 		}
 	}
@@ -651,7 +643,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				AuthorId = users[item2].User.Id,
 				Body = item3
 			};
-			db.TaskComments.Add(taskComment);
+			dbContext.TaskComments.Add(taskComment);
 			_createdAt.Add((taskComment, _now.AddDays(-_random.Next(1, 8)).AddHours(_random.Next(1, 10))));
 		}
 		(string, string)[] array3 = new(string, string)[7]
@@ -677,7 +669,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				TaskId = tasks[item4].Id,
 				UserId = users[item5].User.Id
 			};
-			db.TaskWatchers.Add(taskWatcher);
+			dbContext.TaskWatchers.Add(taskWatcher);
 			_createdAt.Add((taskWatcher, _now.AddDays(-_random.Next(2, 12))));
 		}
 	}
@@ -723,7 +715,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				Description = item5,
 				LoggedDate = Today.AddDays(-item4)
 			};
-			db.WorkLogs.Add(workLog);
+			dbContext.WorkLogs.Add(workLog);
 			_createdAt.Add((workLog, _now.AddDays(-item4).AddHours(18.0)));
 			dictionary[taskItem.Id] = dictionary.GetValueOrDefault(taskItem.Id) + item3;
 		}
@@ -738,7 +730,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 
 	private void CreateNotifications(Guid companyId, Dictionary<string, TaskItem> tasks, Dictionary<string, SeedUser> users)
 	{
-		(string, NotificationType, string, string, string, string, bool, int)[] array = new(string, NotificationType, string, string, string, string, bool, int)[6]
+		(string, NotificationType, string, string, string, string?, bool, int)[] array = new(string, NotificationType, string, string, string, string?, bool, int)[6]
 		{
 			("demo", NotificationType.TaskComment, "New comment on ENG task", "Carol commented on 'Implement two-factor authentication'.", "Implement two-factor authentication", "carol", false, 1),
 			("demo", NotificationType.DeadlineReminder, "Task due soon", "'Q3 campaign creative brief' is due in 3 days.", "Q3 campaign creative brief", null, false, 0),
@@ -747,16 +739,16 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 			("bob", NotificationType.TaskMention, "You were mentioned", "Demo mentioned you on 'Fix memory leak in realtime hub'.", "Fix memory leak in realtime hub", "demo", false, 3),
 			("emma", NotificationType.DeadlineReminder, "Task overdue", "'Update webinar landing page' is overdue.", "Update webinar landing page", null, false, 1)
 		};
-		(string, NotificationType, string, string, string, string, bool, int)[] array2 = array;
+		(string, NotificationType, string, string, string, string?, bool, int)[] array2 = array;
 		for (int i = 0; i < array2.Length; i++)
 		{
-			(string, NotificationType, string, string, string, string, bool, int) tuple = array2[i];
+			(string, NotificationType, string, string, string, string?, bool, int) tuple = array2[i];
 			string item = tuple.Item1;
 			NotificationType item2 = tuple.Item2;
 			string item3 = tuple.Item3;
 			string item4 = tuple.Item4;
 			string item5 = tuple.Item5;
-			string item6 = tuple.Item6;
+			string? item6 = tuple.Item6;
 			bool item7 = tuple.Item7;
 			int item8 = tuple.Rest.Item1;
 			Notification notification = new Notification
@@ -772,7 +764,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				RelatedEntityId = ((item5 == null) ? ((Guid?)null) : new Guid?(tasks[item5].Id)),
 				ActorId = ((item6 == null) ? ((Guid?)null) : new Guid?(users[item6].User.Id))
 			};
-			db.Notifications.Add(notification);
+			dbContext.Notifications.Add(notification);
 			_createdAt.Add((notification, _now.AddDays(-item8).AddHours(-_random.Next(1, 6))));
 		}
 	}
@@ -806,7 +798,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				SortJson = "{\"sortBy\":\"createdAt\",\"desc\":true}",
 				IsShared = item5
 			};
-			db.SavedViews.Add(savedView);
+			dbContext.SavedViews.Add(savedView);
 			_createdAt.Add((savedView, _now.AddDays(-_random.Next(5, 25))));
 		}
 	}
@@ -835,7 +827,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 			ActionConfigJson = "{\"priority\":\"High\"}",
 			IsEnabled = false
 		};
-		db.AutomationRules.AddRange(automationRule, automationRule2);
+		dbContext.AutomationRules.AddRange(automationRule, automationRule2);
 		_createdAt.Add((automationRule, _now.AddDays(-33.0)));
 		_createdAt.Add((automationRule2, _now.AddDays(-21.0)));
 	}
@@ -868,7 +860,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 				UserId = users[item4].User.Id,
 				Timestamp = _now.AddDays(-item5)
 			};
-			db.AuditLogEntries.Add(auditLogEntry);
+			dbContext.AuditLogEntries.Add(auditLogEntry);
 			_createdAt.Add((auditLogEntry, _now.AddDays(-item5)));
 		}
 	}
@@ -881,7 +873,7 @@ public sealed class DevDataSeeder(ApplicationDbContext db, UserManager<Applicati
 			DateTime createdAtUtc = item.CreatedAtUtc;
 			entity.CreatedAtUtc = createdAtUtc;
 		}
-		await db.SaveChangesAsync(ct);
-		await db.Database.ExecuteSqlAsync($"UPDATE tasks\r\nSET updated_at_utc = LEAST(\r\n    now() AT TIME ZONE 'utc',\r\n    created_at_utc + (random() * interval '9 days') + interval '4 hours')\r\nWHERE tenant_id = {companyId}", ct);
+		await dbContext.SaveChangesAsync(ct);
+		await dbContext.Database.ExecuteSqlAsync($"UPDATE tasks\r\nSET updated_at_utc = LEAST(\r\n    now() AT TIME ZONE 'utc',\r\n    created_at_utc + (random() * interval '9 days') + interval '4 hours')\r\nWHERE tenant_id = {companyId}", ct);
 	}
 }

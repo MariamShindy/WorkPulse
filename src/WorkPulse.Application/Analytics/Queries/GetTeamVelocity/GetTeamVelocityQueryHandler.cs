@@ -1,14 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using WorkPulse.Application.Abstractions;
 using WorkPulse.Application.Abstractions.ReadServices;
 using WorkPulse.Application.Analytics.Dtos;
 using WorkPulse.Application.Common;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 
 namespace WorkPulse.Application.Analytics.Queries.GetTeamVelocity;
 
@@ -23,8 +15,8 @@ public sealed class GetTeamVelocityQueryHandler(IAnalyticsReadService analytics,
 		}
 		int weeks = Math.Clamp(request.Weeks, 1, 52);
 		string cacheKey = CacheKeys.TeamVelocity(tenantContext.TenantId, request.TeamId, weeks);
-		IReadOnlyList<TeamVelocityPointDto> cached = await cache.GetAsync<IReadOnlyList<TeamVelocityPointDto>>(cacheKey, ct);
-		if (cached != null)
+		IReadOnlyList<TeamVelocityPointDto>? cached = await cache.GetAsync<IReadOnlyList<TeamVelocityPointDto>>(cacheKey, ct);
+		if (cached is not null)
 		{
 			return Result.Success(cached);
 		}

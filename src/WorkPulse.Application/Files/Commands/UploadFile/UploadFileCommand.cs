@@ -1,10 +1,6 @@
-using System;
 using System.IO;
-using MediatR;
 using WorkPulse.Application.Behaviors;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Files.Dtos;
-using WorkPulse.Domain.Enums;
 
 namespace WorkPulse.Application.Files.Commands.UploadFile;
 

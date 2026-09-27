@@ -1,5 +1,3 @@
-using System;
-using System.Threading;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using WorkPulse.Infrastructure.Jobs;

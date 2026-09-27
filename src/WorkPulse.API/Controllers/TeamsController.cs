@@ -1,13 +1,7 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using WorkPulse.API.Extensions;
 using WorkPulse.API.Filters;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Organizations.Commands.AddTeamMember;
 using WorkPulse.Application.Organizations.Commands.ArchiveTeam;
 using WorkPulse.Application.Organizations.Commands.CreateTeam;
@@ -18,7 +12,6 @@ using WorkPulse.Application.Organizations.Dtos;
 using WorkPulse.Application.Organizations.Queries.GetTeam;
 using WorkPulse.Application.Organizations.Queries.ListTeamMembers;
 using WorkPulse.Application.Organizations.Queries.ListTeams;
-
 using WorkPulse.API.Contracts.Organizations;
 
 namespace WorkPulse.API.Controllers;

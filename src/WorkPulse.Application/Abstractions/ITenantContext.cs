@@ -1,5 +1,3 @@
-using System;
-
 namespace WorkPulse.Application.Abstractions;
 
 public interface ITenantContext

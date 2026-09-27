@@ -1,8 +1,5 @@
-using System;
-using MediatR;
 using WorkPulse.Application.Behaviors;
 using WorkPulse.Application.Common.Pagination;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Dtos;
 using WorkPulse.Application.WorkManagement.Dtos;
 

@@ -1,9 +1,6 @@
 using System.Text.Json;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using WorkPulse.Domain.Common;
-using WorkPulse.Infrastructure.Persistence;
 
 namespace WorkPulse.Infrastructure.Jobs;
 

@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace WorkPulse.Application.Abstractions;
 
 public interface IEmailService

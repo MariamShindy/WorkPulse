@@ -1,13 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Files.Dtos;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Files.Queries;
 
@@ -20,8 +11,8 @@ public sealed class DownloadFileQueryHandler(IApplicationDbContext context, IFil
 		{
 			return tenantCheck.Error;
 		}
-		StoredFile file = await context.StoredFiles.AsNoTracking().FirstOrDefaultAsync((StoredFile f) => f.Id == request.FileId, ct);
-		if (file == null)
+		StoredFile? file = await context.StoredFiles.AsNoTracking().FirstOrDefaultAsync((StoredFile f) => f.Id == request.FileId, ct);
+		if (file is null)
 		{
 			return Error.NotFound("Files.NotFound", "File not found.");
 		}

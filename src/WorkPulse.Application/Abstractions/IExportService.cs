@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using WorkPulse.Application.Abstractions.ReadServices;
 
 namespace WorkPulse.Application.Abstractions;

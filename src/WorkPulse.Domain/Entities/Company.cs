@@ -1,4 +1,3 @@
-using System;
 using WorkPulse.Domain.Common;
 
 namespace WorkPulse.Domain.Entities;

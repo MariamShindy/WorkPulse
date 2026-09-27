@@ -1,121 +1,132 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using MediatR;
-using Microsoft.EntityFrameworkCore;
-using WorkPulse.Application.Abstractions;
-using WorkPulse.Application.Abstractions.Persistence;
-using WorkPulse.Application.Common.Extensions;
-using WorkPulse.Application.Common.Result;
 using WorkPulse.Application.Projects.Dtos;
 using WorkPulse.Application.Projects.Services;
-using WorkPulse.Domain.Entities;
 
 namespace WorkPulse.Application.Projects.Commands.CreateTask;
 
-public sealed class CreateTaskCommandHandler(IApplicationDbContext context, ITenantContext tenantContext, ICurrentUserService currentUser) : IRequestHandler<CreateTaskCommand, Result<TaskItemDto>>
+public sealed class CreateTaskCommandHandler(
+	IApplicationDbContext context,
+	ITenantContext tenantContext,
+	ICurrentUserService currentUser) : IRequestHandler<CreateTaskCommand, Result<TaskItemDto>>
 {
-	public async Task<Result<TaskItemDto>> Handle(CreateTaskCommand request, CancellationToken ct)
+	public async Task<Result<TaskItemDto>> Handle(CreateTaskCommand request, CancellationToken cancellationToken)
 	{
 		Result tenantCheck = tenantContext.EnsureResolved();
 		if (tenantCheck.IsFailure)
 		{
 			return tenantCheck.Error;
 		}
+
 		if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
 		{
-			return Error.Unauthorized("Auth.Unauthorized", "Authentication is required.");
+			return Error.Unauthorized(AuthErrors.UnauthorizedCode, AuthErrors.UnauthorizedMessage);
 		}
-		if (await context.Teams.AsNoTracking().FirstOrDefaultAsync((Team t) => t.Id == request.TeamId, ct) == null)
+
+		Result validation = await ValidateRelatedEntitiesAsync(request, cancellationToken);
+		if (validation.IsFailure)
 		{
-			return Error.NotFound("Team.NotFound", "Team not found.");
+			return validation.Error;
 		}
-		bool hasValue = request.ProjectId.HasValue;
-		bool flag = hasValue;
-		if (flag)
+
+		Result<Guid> workflowStateResult = await ResolveWorkflowStateIdAsync(request, cancellationToken);
+		if (workflowStateResult.IsFailure)
 		{
-			flag = !(await context.Projects.AnyAsync((Project p) => p.Id == request.ProjectId && p.TeamId == request.TeamId, ct));
+			return workflowStateResult.Error;
 		}
-		if (flag)
+
+		TeamIssueCounter? issueCounter = await context.TeamIssueCounters
+			.FirstOrDefaultAsync(counter => counter.TeamId == request.TeamId, cancellationToken);
+		if (issueCounter is null)
 		{
-			return Error.NotFound("Project.NotFound", "Project not found.");
+			return Error.NotFound(TeamErrors.NotFoundCode, "Team issue counter not found.");
 		}
-		bool hasValue2 = request.EpicId.HasValue;
-		bool flag2 = hasValue2;
-		if (flag2)
+
+		TaskItem task = CreateTaskEntity(request, workflowStateResult.Value, issueCounter, currentUser.UserId.Value);
+		context.TaskItems.Add(task);
+
+		await SyncAssigneesAsync(request, task.Id, cancellationToken);
+		return await TaskDtoMapper.MapTaskDtoAsync(context, task, cancellationToken);
+	}
+
+	private async Task<Result> ValidateRelatedEntitiesAsync(CreateTaskCommand request, CancellationToken cancellationToken)
+	{
+		if (await context.Teams.AsNoTracking().FirstOrDefaultAsync(team => team.Id == request.TeamId, cancellationToken) is null)
 		{
-			flag2 = !(await context.Epics.AnyAsync((Epic e) => e.Id == request.EpicId && e.TeamId == request.TeamId, ct));
+			return Error.NotFound(TeamErrors.NotFoundCode, "Team not found.");
 		}
-		if (flag2)
+
+		if (request.ProjectId.HasValue &&
+		    !await context.Projects.AnyAsync(project => project.Id == request.ProjectId && project.TeamId == request.TeamId, cancellationToken))
 		{
-			return Error.NotFound("Epic.NotFound", "Epic not found.");
+			return Error.NotFound(ProjectErrors.NotFoundCode, "Project not found.");
 		}
-		bool hasValue3 = request.SprintId.HasValue;
-		bool flag3 = hasValue3;
-		if (flag3)
+
+		if (request.EpicId.HasValue &&
+		    !await context.Epics.AnyAsync(epic => epic.Id == request.EpicId && epic.TeamId == request.TeamId, cancellationToken))
 		{
-			flag3 = !(await context.Sprints.AnyAsync((Sprint s) => s.Id == request.SprintId && s.TeamId == request.TeamId, ct));
+			return Error.NotFound(EpicErrors.NotFoundCode, "Epic not found.");
 		}
-		if (flag3)
+
+		if (request.SprintId.HasValue &&
+		    !await context.Sprints.AnyAsync(sprint => sprint.Id == request.SprintId && sprint.TeamId == request.TeamId, cancellationToken))
 		{
-			return Error.NotFound("Sprint.NotFound", "Sprint not found.");
+			return Error.NotFound(SprintErrors.NotFoundCode, "Sprint not found.");
 		}
-		bool hasValue4 = request.AssignedTeamId.HasValue;
-		bool flag4 = hasValue4;
-		if (flag4)
+
+		if (request.AssignedTeamId.HasValue &&
+		    !await context.Teams.AnyAsync(team => team.Id == request.AssignedTeamId, cancellationToken))
 		{
-			flag4 = !(await context.Teams.AnyAsync((Team t) => t.Id == request.AssignedTeamId, ct));
+			return Error.NotFound(TeamErrors.NotFoundCode, "Assigned team not found.");
 		}
-		if (flag4)
-		{
-			return Error.NotFound("Team.NotFound", "Assigned team not found.");
-		}
-		Guid workflowStateId;
+
+		return Result.Success();
+	}
+
+	private async Task<Result<Guid>> ResolveWorkflowStateIdAsync(CreateTaskCommand request, CancellationToken cancellationToken)
+	{
 		if (request.WorkflowStateId.HasValue)
 		{
-			WorkflowState workflowState = await context.WorkflowStates.AsNoTracking().FirstOrDefaultAsync((WorkflowState s) => s.Id == request.WorkflowStateId, ct);
-			if (workflowState == null)
-			{
-				return Error.NotFound("Workflow.StateNotFound", "Workflow state not found.");
-			}
-			workflowStateId = workflowState.Id;
+			WorkflowState? workflowState = await context.WorkflowStates.AsNoTracking()
+				.FirstOrDefaultAsync(state => state.Id == request.WorkflowStateId, cancellationToken);
+
+			return workflowState is null
+				? Error.NotFound(WorkflowErrors.StateNotFoundCode, "Workflow state not found.")
+				: Result.Success(workflowState.Id);
 		}
-		else
-		{
-			WorkflowState workflowState = await (from w in context.Workflows.AsNoTracking()
-				join s in context.WorkflowStates.AsNoTracking() on w.Id equals s.WorkflowId
-				where w.TeamId == request.TeamId && w.IsDefault && s.IsDefault
-				select s).FirstOrDefaultAsync(ct);
-			if (workflowState == null)
-			{
-				return Error.NotFound("Workflow.StateNotFound", "Default workflow state not found.");
-			}
-			workflowStateId = workflowState.Id;
-		}
-		TeamIssueCounter counter = await context.TeamIssueCounters.FirstOrDefaultAsync((TeamIssueCounter c) => c.TeamId == request.TeamId, ct);
-		if (counter == null)
-		{
-			return Error.NotFound("Team.NotFound", "Team issue counter not found.");
-		}
-		counter.LastNumber++;
-		int number = counter.LastNumber;
-		List<Guid> assigneeIds = request.AssigneeIds?.ToList() ?? new List<Guid>();
-		Guid primaryAssignee = request.AssigneeId ?? assigneeIds.FirstOrDefault();
-		TaskItem task = new TaskItem
+
+		WorkflowState? defaultState = await (
+			from workflow in context.Workflows.AsNoTracking()
+			join state in context.WorkflowStates.AsNoTracking() on workflow.Id equals state.WorkflowId
+			where workflow.TeamId == request.TeamId && workflow.IsDefault && state.IsDefault
+			select state).FirstOrDefaultAsync(cancellationToken);
+
+		return defaultState is null
+			? Error.NotFound(WorkflowErrors.StateNotFoundCode, "Default workflow state not found.")
+			: Result.Success(defaultState.Id);
+	}
+
+	private TaskItem CreateTaskEntity(
+		CreateTaskCommand request,
+		Guid workflowStateId,
+		TeamIssueCounter issueCounter,
+		Guid creatorId)
+	{
+		issueCounter.LastNumber++;
+		List<Guid> assigneeIds = request.AssigneeIds?.ToList() ?? [];
+		Guid primaryAssigneeId = request.AssigneeId ?? assigneeIds.FirstOrDefault();
+
+		return new TaskItem
 		{
 			Id = Guid.NewGuid(),
 			TenantId = tenantContext.TenantId,
 			TeamId = request.TeamId,
 			ProjectId = request.ProjectId,
 			WorkflowStateId = workflowStateId,
-			Number = number,
+			Number = issueCounter.LastNumber,
 			Title = request.Title.Trim(),
 			Description = request.Description?.Trim(),
 			Priority = request.Priority,
-			AssigneeId = ((primaryAssignee == Guid.Empty) ? ((Guid?)null) : new Guid?(primaryAssignee)),
-			CreatorId = currentUser.UserId.Value,
+			AssigneeId = primaryAssigneeId == Guid.Empty ? null : primaryAssigneeId,
+			CreatorId = creatorId,
 			DueDate = request.DueDate,
 			ParentTaskId = request.ParentTaskId,
 			StoryPoints = request.StoryPoints,
@@ -126,15 +137,22 @@ public sealed class CreateTaskCommandHandler(IApplicationDbContext context, ITen
 			SprintId = request.SprintId,
 			AssignedTeamId = request.AssignedTeamId
 		};
-		context.TaskItems.Add(task);
+	}
+
+	private async Task SyncAssigneesAsync(CreateTaskCommand request, Guid taskId, CancellationToken cancellationToken)
+	{
+		List<Guid> assigneeIds = request.AssigneeIds?.ToList() ?? [];
+		Guid primaryAssigneeId = request.AssigneeId ?? assigneeIds.FirstOrDefault();
+
 		if (assigneeIds.Count > 0)
 		{
-			await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, task.Id, assigneeIds, ct);
+			await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, taskId, assigneeIds, cancellationToken);
+			return;
 		}
-		else if (primaryAssignee != Guid.Empty)
+
+		if (primaryAssigneeId != Guid.Empty)
 		{
-			await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, task.Id, [primaryAssignee], ct);
+			await TaskDtoMapper.SyncAssigneesAsync(context, tenantContext.TenantId, taskId, [primaryAssigneeId], cancellationToken);
 		}
-		return await TaskDtoMapper.MapTaskDtoAsync(context, task, ct);
 	}
 }
