@@ -9,7 +9,7 @@ public sealed class DevDataSeeder(
 	UserManager<ApplicationUser> userManager,
 	ILogger<DevDataSeeder> logger)
 {
-	public const string DemoCompanySlug = "workpulse-demo";
+	public const string DemoCompanySlug = "tech-egypt";
 
 	public const string DemoEmail = "demo@workpulse.local";
 
@@ -64,12 +64,12 @@ public sealed class DevDataSeeder(
 	{
 		(string Key, string Email, string First, string Last, CompanyMemberRole Role, int AgeDays)[] userSpecs =
 		[
-			("demo", DemoEmail, "أحمد", "محمود", CompanyMemberRole.Owner, 58),
-			("alice", "alice.johnson@workpulse.local", "فاطمة", "علي", CompanyMemberRole.Admin, 56),
-			("bob", "bob.martinez@workpulse.local", "محمد", "حسن", CompanyMemberRole.Member, 54),
-			("carol", "carol.chen@workpulse.local", "نور", "عبدالله", CompanyMemberRole.Member, 52),
-			("david", "david.kim@workpulse.local", "خالد", "إبراهيم", CompanyMemberRole.Member, 49),
-			("emma", "emma.wilson@workpulse.local", "ليلى", "سالم", CompanyMemberRole.Admin, 47)
+			("demo", DemoEmail, "Ahmed", "Mahmoud", CompanyMemberRole.Owner, 58),
+			("alice", "alice.johnson@workpulse.local", "Fatma", "Ali", CompanyMemberRole.Admin, 56),
+			("bob", "bob.martinez@workpulse.local", "Mohamed", "Hassan", CompanyMemberRole.Member, 54),
+			("carol", "carol.chen@workpulse.local", "Nour", "Abdullah", CompanyMemberRole.Member, 52),
+			("david", "david.kim@workpulse.local", "Khaled", "Ibrahim", CompanyMemberRole.Member, 49),
+			("emma", "emma.wilson@workpulse.local", "Laila", "Salem", CompanyMemberRole.Admin, 47)
 		];
 
 		Dictionary<string, SeedUser> usersByKey = [];
@@ -105,9 +105,9 @@ public sealed class DevDataSeeder(
 		Company company = new Company
 		{
 			Id = companyId,
-			Name = "تك إجيبت",
+			Name = "Tech Egypt",
 			Slug = "tech-egypt",
-			Description = "شركة مصرية متخصصة في تطوير البرمجيات والحلول الرقمية",
+			Description = "An Egyptian company specialized in software development and digital solutions.",
 			IsActive = true
 		};
 		dbContext.Companies.Add(company);
@@ -131,20 +131,20 @@ public sealed class DevDataSeeder(
 	{
 		(string, string, string, string, int, (string, TeamMemberRole)[])[] array = new(string, string, string, string, int, (string, TeamMemberRole)[])[3]
 		{
-			("فريق الخادم الخلفي", "ENG", "#6366F1", "⚙", 55, new(string, TeamMemberRole)[4]
+			("Backend Team", "ENG", "#6366F1", "⚙", 55, new(string, TeamMemberRole)[4]
 			{
 				("demo", TeamMemberRole.Lead),
 				("bob", TeamMemberRole.Member),
 				("carol", TeamMemberRole.Member),
 				("david", TeamMemberRole.Member)
 			}),
-			("فريق الواجهة الأمامية", "DES", "#EC4899", "✏", 53, new(string, TeamMemberRole)[3]
+			("Frontend Team", "DES", "#EC4899", "✏", 53, new(string, TeamMemberRole)[3]
 			{
 				("alice", TeamMemberRole.Lead),
 				("emma", TeamMemberRole.Member),
 				("carol", TeamMemberRole.Member)
 			}),
-			("\u0641\u0631\u064a\u0642 \u0627\u0644\u0628\u0646\u064a\u0629 \u0627\u0644\u062a\u062d\u062a\u064a\u0629 \u0627\u0644\u0633\u062d\u0627\u0628\u064a\u0629", "MKT", "#F59E0B", "\u2601\ufe0f", 50, new(string, TeamMemberRole)[3]
+			("Cloud Infrastructure Team", "MKT", "#F59E0B", "\u2601\ufe0f", 50, new(string, TeamMemberRole)[3]
 			{
 				("emma", TeamMemberRole.Lead),
 				("alice", TeamMemberRole.Member),
@@ -216,12 +216,12 @@ public sealed class DevDataSeeder(
 	{
 		(string, string, string, ProjectStatus, string, int, int?, int)[] array = new(string, string, string, ProjectStatus, string, int, int?, int)[6]
 		{
-			("ENG", "نظام إدارة المحتوى", "PLAT", ProjectStatus.Active, "demo", 45, 40, 46),
-			("ENG", "تطبيق الهاتف الذكي", "MOB", ProjectStatus.Active, "bob", 30, 25, 32),
-			("ENG", "واجهة برمجية v2", "APIV2", ProjectStatus.Planned, "carol", -7, 70, 20),
-			("DES", "نظام التصميم الموحد", "DSYS", ProjectStatus.Active, "alice", 40, 20, 42),
-			("MKT", "منصة التطوير السحابية", "WEB", ProjectStatus.Completed, "emma", 55, -5, 52),
-			("MKT", "نظام المراقبة والتنبيهات", "Q3C", ProjectStatus.Planned, "emma", -10, 80, 12)
+			("ENG", "Content Management System", "PLAT", ProjectStatus.Active, "demo", 45, 40, 46),
+			("ENG", "Mobile App", "MOB", ProjectStatus.Active, "bob", 30, 25, 32),
+			("ENG", "API v2", "APIV2", ProjectStatus.Planned, "carol", -7, 70, 20),
+			("DES", "Unified Design System", "DSYS", ProjectStatus.Active, "alice", 40, 20, 42),
+			("MKT", "Cloud Development Platform", "WEB", ProjectStatus.Completed, "emma", 55, -5, 52),
+			("MKT", "Monitoring & Alerts System", "Q3C", ProjectStatus.Planned, "emma", -10, 80, 12)
 		};
 		Dictionary<string, Project> dictionary = new Dictionary<string, Project>();
 		(string, string, string, ProjectStatus, string, int, int?, int)[] array2 = array;
@@ -260,13 +260,13 @@ public sealed class DevDataSeeder(
 	{
 		(string, string, string, EpicStatus, int)[] array = new(string, string, string, EpicStatus, int)[7]
 		{
-			("ENG", "auth", "المصادقة والأمان", EpicStatus.InProgress, 44),
-			("ENG", "perf", "تحسين الأداء", EpicStatus.Open, 35),
-			("ENG", "dx", "تجربة المطور", EpicStatus.Open, 25),
-			("DES", "components", "مكتبة المكونات", EpicStatus.InProgress, 40),
-			("DES", "brand", "إعادة تصميم الواجهة", EpicStatus.Done, 48),
-			("MKT", "content", "تحسين البنية التحتية", EpicStatus.InProgress, 30),
-			("MKT", "launch", "خط أنابيب CI/CD", EpicStatus.Open, 15)
+			("ENG", "auth", "Authentication & Security", EpicStatus.InProgress, 44),
+			("ENG", "perf", "Performance Optimization", EpicStatus.Open, 35),
+			("ENG", "dx", "Developer Experience", EpicStatus.Open, 25),
+			("DES", "components", "Component Library", EpicStatus.InProgress, 40),
+			("DES", "brand", "UI Redesign", EpicStatus.Done, 48),
+			("MKT", "content", "Infrastructure Improvement", EpicStatus.InProgress, 30),
+			("MKT", "launch", "CI/CD Pipeline", EpicStatus.Open, 15)
 		};
 		Dictionary<string, Epic> dictionary = new Dictionary<string, Epic>();
 		(string, string, string, EpicStatus, int)[] array2 = array;
