@@ -775,7 +775,7 @@ public sealed class DevDataSeeder(
 		{
 			("demo", "My urgent tasks", SavedViewEntityType.Tasks, "{\"priority\":\"Urgent\",\"assignee\":\"me\"}", false),
 			("demo", "Overdue work", SavedViewEntityType.Tasks, "{\"due\":\"overdue\"}", true),
-			("alice", "Design in review", SavedViewEntityType.Tasks, "{\"team\":\"DES\",\"state\":\"In Review\"}", true),
+			("alice", "Design in review", SavedViewEntityType.Tasks, "{\"team\":\"DES\",\"stateName\":\"In Review\"}", true),
 			("emma", "Active projects", SavedViewEntityType.Projects, "{\"status\":\"Active\"}", false)
 		};
 		(string, string, SavedViewEntityType, string, bool)[] array2 = array;

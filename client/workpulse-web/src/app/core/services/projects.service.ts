@@ -8,6 +8,7 @@ export interface ProjectFilters {
   teamId?: string;
   status?: string;
   includeArchived?: boolean;
+  archivedOnly?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -28,12 +29,16 @@ export class ProjectsService {
   private readonly base = `${environment.apiUrl}/projects`;
 
   list(filters: ProjectFilters = {}): Observable<PagedList<Project>> {
+    const includeArchived = !!(filters.includeArchived || filters.archivedOnly);
     let params = new HttpParams()
-      .set('page', filters.page ?? 1)
-      .set('pageSize', filters.pageSize ?? 50)
-      .set('includeArchived', filters.includeArchived ?? false);
+      .set('page', String(filters.page ?? 1))
+      .set('pageSize', String(filters.pageSize ?? 50))
+      .set('includeArchived', String(includeArchived))
+      .set('archivedOnly', String(!!filters.archivedOnly));
     if (filters.teamId) params = params.set('teamId', filters.teamId);
-    if (filters.status) params = params.set('status', filters.status);
+    if (filters.status) {
+      params = params.set('status', String(enumValue(PROJECT_STATUSES, filters.status)));
+    }
     return this.http.get<PagedList<Project>>(this.base, { params });
   }
 

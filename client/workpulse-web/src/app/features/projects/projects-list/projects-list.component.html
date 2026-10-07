@@ -29,15 +29,13 @@
       }
     </select>
   </label>
-  <label class="check-label">
-    <span>&nbsp;</span>
-    <span class="check-inner">
-      <input
-        type="checkbox"
-        [checked]="includeArchived()"
-        (change)="applyFilter('archived', $any($event.target).checked)" />
-      Show archived
-    </span>
+  <label>
+    <span>Archived</span>
+    <select [value]="archiveFilter()" (change)="applyFilter('archived', $any($event.target).value)">
+      <option value="hide">Hide archived</option>
+      <option value="include">Include archived</option>
+      <option value="only">Archived only</option>
+    </select>
   </label>
 </div>
 
@@ -52,7 +50,11 @@
     <app-empty-state
       icon="▦"
       heading="No projects found"
-      message="Create a project to group related tasks and track progress." />
+      [message]="
+        archiveFilter() === 'only'
+          ? 'No archived projects match the current filters.'
+          : 'Create a project to group related tasks and track progress.'
+      " />
   </div>
 } @else {
   <div class="projects-grid">

@@ -1,21 +1,3 @@
-.check-label {
-  min-width: auto !important;
-
-  .check-inner {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: var(--text-muted);
-    font-size: 0.88rem;
-    cursor: pointer;
-    padding: 0.7rem 0;
-
-    input {
-      accent-color: var(--accent);
-    }
-  }
-}
-
 .projects-grid,
 .loading-grid {
   display: grid;

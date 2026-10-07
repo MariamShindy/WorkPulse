@@ -23,6 +23,17 @@ describe('ProjectsService', () => {
     const req = httpMock.expectOne((r) => r.url === '/api/projects');
     expect(req.request.params.get('teamId')).toBe('team-1');
     expect(req.request.params.get('includeArchived')).toBe('true');
+    expect(req.request.params.get('archivedOnly')).toBe('false');
+    req.flush({ items: [], page: 1, pageSize: 50, totalCount: 0, totalPages: 0, hasPreviousPage: false, hasNextPage: false });
+  });
+
+  it('lists archived-only projects', () => {
+    service.list({ archivedOnly: true, status: 'Active' }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/api/projects');
+    expect(req.request.params.get('includeArchived')).toBe('true');
+    expect(req.request.params.get('archivedOnly')).toBe('true');
+    expect(req.request.params.get('status')).toBe('1');
     req.flush({ items: [], page: 1, pageSize: 50, totalCount: 0, totalPages: 0, hasPreviousPage: false, hasNextPage: false });
   });
 

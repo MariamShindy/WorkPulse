@@ -3,7 +3,12 @@ using WorkPulse.Application.Collaboration.Services;
 
 namespace WorkPulse.Application.Collaboration.Commands.AddTaskComment;
 
-public sealed class AddTaskCommentCommandHandler(IApplicationDbContext context, ITenantContext tenantContext, ICurrentUserService currentUser, ITaskCollaborationService collaboration) : IRequestHandler<AddTaskCommentCommand, Result<TaskCommentDto>>
+public sealed class AddTaskCommentCommandHandler(
+	IApplicationDbContext context,
+	ITenantContext tenantContext,
+	ICurrentUserService currentUser,
+	ITaskCollaborationService collaboration,
+	IDateTime dateTime) : IRequestHandler<AddTaskCommentCommand, Result<TaskCommentDto>>
 {
 	public async Task<Result<TaskCommentDto>> Handle(AddTaskCommentCommand request, CancellationToken ct)
 	{
@@ -28,7 +33,8 @@ public sealed class AddTaskCommentCommandHandler(IApplicationDbContext context, 
 			TaskId = request.TaskId,
 			AuthorId = currentUser.UserId.Value,
 			Body = request.Body.Trim(),
-			MentionedUserIds = mentions
+			MentionedUserIds = mentions,
+			CreatedAtUtc = dateTime.UtcNow
 		};
 		context.TaskComments.Add(comment);
 		await collaboration.RecordActivityAsync(tenantContext.TenantId, request.TaskId, currentUser.UserId.Value, ActivityType.Commented, "Added a comment", new
