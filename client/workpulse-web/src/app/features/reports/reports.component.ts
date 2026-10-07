@@ -60,6 +60,7 @@ export class ReportsComponent implements OnInit {
 
   readonly pageSize = 10;
   readonly currentPage = signal(1);
+  readonly overduePage = signal(1);
 
   readonly paginatedSummaryRows = computed(() => {
     const s = this.summary();
@@ -72,6 +73,19 @@ export class ReportsComponent implements OnInit {
     const s = this.summary();
     if (!s) return 0;
     return Math.ceil(s.rows.length / this.pageSize);
+  });
+
+  readonly paginatedOverdueRows = computed(() => {
+    const o = this.overdue();
+    if (!o) return [];
+    const start = (this.overduePage() - 1) * this.pageSize;
+    return o.rows.slice(start, start + this.pageSize);
+  });
+
+  readonly overdueTotalPages = computed(() => {
+    const o = this.overdue();
+    if (!o) return 0;
+    return Math.ceil(o.rows.length / this.pageSize);
   });
 
   readonly chartOptions: ChartOptions = { responsive: true, maintainAspectRatio: false };
@@ -123,6 +137,7 @@ export class ReportsComponent implements OnInit {
     if (key === 'from') this.filterFrom.set(value);
     if (key === 'to') this.filterTo.set(value);
     this.currentPage.set(1);
+    this.overduePage.set(1);
     this.load();
     this.loadAnalytics();
     if (key === 'team') {
@@ -132,6 +147,10 @@ export class ReportsComponent implements OnInit {
 
   setPage(page: number): void {
     this.currentPage.set(page);
+  }
+
+  setOverduePage(page: number): void {
+    this.overduePage.set(page);
   }
 
   setSelectedSprint(sprintId: string): void {

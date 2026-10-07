@@ -13,7 +13,6 @@ import { ProjectsService } from '../../../core/services/projects.service';
 import { EpicsService } from '../../../core/services/epics.service';
 import { SprintsService } from '../../../core/services/sprints.service';
 import { LabelsService } from '../../../core/services/labels.service';
-import { SavedViewsService } from '../../../core/services/saved-views.service';
 import { CompaniesService } from '../../../core/services/companies.service';
 import { RealtimeService } from '../../../core/services/realtime.service';
 import {
@@ -21,7 +20,6 @@ import {
   Epic,
   Label,
   Project,
-  SavedView,
   Sprint,
   TASK_PRIORITIES,
   TaskItem,
@@ -60,7 +58,6 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   private readonly epicsService = inject(EpicsService);
   private readonly sprintsService = inject(SprintsService);
   private readonly labelsService = inject(LabelsService);
-  private readonly savedViewsService = inject(SavedViewsService);
   private readonly companies = inject(CompaniesService);
   private readonly realtime = inject(RealtimeService);
   private readonly route = inject(ActivatedRoute);
@@ -82,16 +79,16 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
   readonly epics = signal<Epic[]>([]);
   readonly sprints = signal<Sprint[]>([]);
   readonly labels = signal<Label[]>([]);
-  readonly savedViews = signal<SavedView[]>([]);
   readonly companyMembers = signal<CompanyMember[]>([]);
   readonly taskLabelMap = signal<Map<string, string[]>>(new Map());
 
   readonly loading = signal(true);
   readonly creating = signal(false);
+  readonly creatingFull = signal(false);
   readonly error = signal<string | null>(null);
   readonly filters = signal<BoardFilters>({ ...EMPTY_FILTERS });
   readonly selectedTask = signal<TaskItem | null>(null);
-  readonly saveViewOpen = signal(false);
+  readonly fullAddOpen = signal(false);
   readonly draggingTaskId = signal<string | null>(null);
 
   /** Suppresses card click after a drag so the drawer does not open on drop. */
@@ -104,9 +101,20 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
     title: ['', [Validators.required, Validators.maxLength(200)]]
   });
 
-  readonly saveViewForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required, Validators.maxLength(100)]],
-    isShared: [false]
+  readonly fullForm = this.fb.nonNullable.group({
+    title: ['', [Validators.required, Validators.maxLength(200)]],
+    description: [''],
+    priority: ['Medium'],
+    workflowStateId: [''],
+    projectId: [''],
+    dueDate: [''],
+    epicId: [''],
+    sprintId: [''],
+    storyPoints: [null as number | null],
+    estimatedHours: [null as number | null],
+    isBlocked: [false],
+    blockedReason: [''],
+    assigneeId: ['']
   });
 
   readonly filteredTasks = computed(() => {
@@ -204,7 +212,6 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
     this.labelsService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => this.labels.set(res.items)
     });
-    this.loadSavedViews();
 
     this.teamsService.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (res) => {
@@ -256,65 +263,6 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
     return !!(f.projectId || f.epicId || f.sprintId || f.labelId || f.priority);
   }
 
-  // ── Saved views ────────────────────────────────────────────────────────────
-
-  loadSavedViews(): void {
-    this.savedViewsService.list('Tasks').subscribe({
-      next: (res) => this.savedViews.set(res.items)
-    });
-  }
-
-  applySavedView(viewId: string): void {
-    if (!viewId) return;
-    const view = this.savedViews().find((v) => v.id === viewId);
-    if (!view) return;
-    try {
-      const parsed = JSON.parse(view.filtersJson) as Partial<BoardFilters> & { teamId?: string };
-      if (parsed.teamId && parsed.teamId !== this.selectedTeamId()) {
-        this.selectTeam(parsed.teamId);
-      }
-      this.filters.set({
-        projectId: parsed.projectId ?? '',
-        epicId: parsed.epicId ?? '',
-        sprintId: parsed.sprintId ?? '',
-        labelId: parsed.labelId ?? '',
-        priority: parsed.priority ?? ''
-      });
-      if (parsed.labelId) {
-        this.loadTaskLabels();
-      }
-    } catch {
-      this.error.set('This saved view could not be applied.');
-    }
-  }
-
-  saveCurrentView(): void {
-    if (this.saveViewForm.invalid) return;
-    const { name, isShared } = this.saveViewForm.getRawValue();
-    this.savedViewsService
-      .create({
-        name,
-        entityType: 'Tasks',
-        filtersJson: JSON.stringify({ teamId: this.selectedTeamId(), ...this.filters() }),
-        sortJson: '{}',
-        isShared
-      })
-      .subscribe({
-        next: (view) => {
-          this.savedViews.update((list) => [view, ...list]);
-          this.saveViewOpen.set(false);
-          this.saveViewForm.reset({ name: '', isShared: false });
-        },
-        error: (err) => this.error.set(apiErrorMessage(err, 'Failed to save view.'))
-      });
-  }
-
-  deleteSavedView(viewId: string): void {
-    this.savedViewsService.delete(viewId).subscribe({
-      next: () => this.savedViews.update((list) => list.filter((v) => v.id !== viewId))
-    });
-  }
-
   // ── Tasks ──────────────────────────────────────────────────────────────────
 
   createTask(): void {
@@ -341,6 +289,74 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.error.set(apiErrorMessage(err, 'Failed to create task.'));
           this.creating.set(false);
+        }
+      });
+  }
+
+  openFullAdd(): void {
+    const defaultState = this.states().find((s) => s.isDefault) ?? this.states()[0];
+    const f = this.filters();
+    this.selectedTask.set(null);
+    this.fullForm.reset({
+      title: this.form.controls.title.value.trim(),
+      description: '',
+      priority: 'Medium',
+      workflowStateId: defaultState?.id ?? '',
+      projectId: f.projectId,
+      dueDate: '',
+      epicId: f.epicId,
+      sprintId: f.sprintId,
+      storyPoints: null,
+      estimatedHours: null,
+      isBlocked: false,
+      blockedReason: '',
+      assigneeId: ''
+    });
+    this.fullAddOpen.set(true);
+  }
+
+  closeFullAdd(): void {
+    this.fullAddOpen.set(false);
+  }
+
+  createFullTask(): void {
+    const teamId = this.selectedTeamId();
+    const defaultState = this.states().find((s) => s.isDefault) ?? this.states()[0];
+    if (!teamId || this.fullForm.invalid) return;
+
+    const v = this.fullForm.getRawValue();
+    const workflowStateId = v.workflowStateId || defaultState?.id;
+    if (!workflowStateId) return;
+
+    this.creatingFull.set(true);
+    this.tasksService
+      .create(teamId, {
+        title: v.title.trim(),
+        description: v.description.trim() || null,
+        priority: v.priority,
+        workflowStateId,
+        projectId: v.projectId || null,
+        epicId: v.epicId || null,
+        sprintId: v.sprintId || null,
+        dueDate: v.dueDate || null,
+        storyPoints: v.storyPoints,
+        estimatedHours: v.estimatedHours,
+        isBlocked: v.isBlocked,
+        blockedReason: v.isBlocked ? v.blockedReason.trim() || null : null,
+        assigneeId: v.assigneeId || null,
+        assigneeIds: v.assigneeId ? [v.assigneeId] : null
+      })
+      .subscribe({
+        next: (task) => {
+          this.tasks.update((list) => [task, ...list]);
+          this.form.reset();
+          this.creatingFull.set(false);
+          this.fullAddOpen.set(false);
+          this.selectedTask.set(task);
+        },
+        error: (err) => {
+          this.error.set(apiErrorMessage(err, 'Failed to create task.'));
+          this.creatingFull.set(false);
         }
       });
   }
@@ -414,6 +430,7 @@ export class KanbanBoardComponent implements OnInit, OnDestroy {
 
   openTask(task: TaskItem): void {
     if (this.suppressNextClick || this.draggingTaskId()) return;
+    this.fullAddOpen.set(false);
     this.selectedTask.set(task);
   }
 

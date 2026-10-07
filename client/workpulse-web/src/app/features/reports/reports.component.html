@@ -127,7 +127,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of o.rows; track row.taskId) {
+            @for (row of paginatedOverdueRows(); track row.taskId) {
               <tr>
                 <td>{{ row.identifier }}</td>
                 <td class="title-cell">{{ row.title }}</td>
@@ -139,6 +139,17 @@
           </tbody>
         </table>
       </div>
+      @if (overdueTotalPages() > 1) {
+        <div class="pagination">
+          <button type="button" class="btn btn-ghost btn-sm" [disabled]="overduePage() === 1" (click)="setOverduePage(overduePage() - 1)">
+            Previous
+          </button>
+          <span class="pagination-info">Page {{ overduePage() }} of {{ overdueTotalPages() }}</span>
+          <button type="button" class="btn btn-ghost btn-sm" [disabled]="overduePage() === overdueTotalPages()" (click)="setOverduePage(overduePage() + 1)">
+            Next
+          </button>
+        </div>
+      }
     }
   </section>
 }

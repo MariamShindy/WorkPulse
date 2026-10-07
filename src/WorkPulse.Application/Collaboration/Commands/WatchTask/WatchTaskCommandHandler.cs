@@ -19,18 +19,39 @@ public sealed class WatchTaskCommandHandler(IApplicationDbContext context, ITena
 		{
 			return Error.NotFound("Task.NotFound", "Task not found.");
 		}
-		if (await context.TaskWatchers.AnyAsync((TaskWatcher w) => w.TaskId == request.TaskId && w.UserId == currentUser.UserId.Value, ct))
+
+		Guid userId = currentUser.UserId.Value;
+		Guid tenantId = tenantContext.TenantId;
+
+		// Unwatch soft-deletes; the unique (TaskId, UserId) index still holds the row.
+		TaskWatcher? existing = await context.TaskWatchers
+			.IgnoreQueryFilters()
+			.FirstOrDefaultAsync(
+				(TaskWatcher w) => w.TenantId == tenantId && w.TaskId == request.TaskId && w.UserId == userId,
+				ct);
+
+		if (existing is not null)
 		{
-			return Error.Conflict("Collaboration.AlreadyWatching", "Already watching this task.");
+			if (!existing.IsDeleted)
+			{
+				return Error.Conflict("Collaboration.AlreadyWatching", "Already watching this task.");
+			}
+
+			existing.IsDeleted = false;
+			existing.DeletedAtUtc = null;
+			existing.DeletedById = null;
+			await collaboration.RecordActivityAsync(tenantId, request.TaskId, userId, ActivityType.Watched, "Started watching", null, ct);
+			return Result.Success();
 		}
+
 		context.TaskWatchers.Add(new TaskWatcher
 		{
 			Id = Guid.NewGuid(),
-			TenantId = tenantContext.TenantId,
+			TenantId = tenantId,
 			TaskId = request.TaskId,
-			UserId = currentUser.UserId.Value
+			UserId = userId
 		});
-		await collaboration.RecordActivityAsync(tenantContext.TenantId, request.TaskId, currentUser.UserId.Value, ActivityType.Watched, "Started watching", null, ct);
+		await collaboration.RecordActivityAsync(tenantId, request.TaskId, userId, ActivityType.Watched, "Started watching", null, ct);
 		return Result.Success();
 	}
 }

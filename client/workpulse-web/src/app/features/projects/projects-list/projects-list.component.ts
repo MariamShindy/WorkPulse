@@ -42,7 +42,8 @@ export class ProjectsListComponent implements OnInit {
 
   readonly filterTeamId = signal('');
   readonly filterStatus = signal('');
-  readonly includeArchived = signal(false);
+  /** hide = active only, include = active + archived, only = archived only */
+  readonly archiveFilter = signal<'hide' | 'include' | 'only'>('hide');
 
   readonly form = this.fb.nonNullable.group({
     teamId: ['', Validators.required],
@@ -63,11 +64,13 @@ export class ProjectsListComponent implements OnInit {
 
   load(page = 1): void {
     this.loading.set(true);
+    const archive = this.archiveFilter();
     this.projectsService
       .list({
         teamId: this.filterTeamId() || undefined,
         status: this.filterStatus() || undefined,
-        includeArchived: this.includeArchived(),
+        includeArchived: archive === 'include',
+        archivedOnly: archive === 'only',
         page,
         pageSize: 24
       })
@@ -83,10 +86,13 @@ export class ProjectsListComponent implements OnInit {
       });
   }
 
-  applyFilter(kind: 'team' | 'status' | 'archived', value: string | boolean): void {
-    if (kind === 'team') this.filterTeamId.set(value as string);
-    if (kind === 'status') this.filterStatus.set(value as string);
-    if (kind === 'archived') this.includeArchived.set(value as boolean);
+  applyFilter(kind: 'team' | 'status' | 'archived', value: string): void {
+    if (kind === 'team') this.filterTeamId.set(value);
+    if (kind === 'status') this.filterStatus.set(value);
+    if (kind === 'archived') {
+      const mode = value === 'include' || value === 'only' ? value : 'hide';
+      this.archiveFilter.set(mode);
+    }
     this.load();
   }
 

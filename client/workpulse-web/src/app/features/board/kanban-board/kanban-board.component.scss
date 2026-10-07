@@ -16,8 +16,20 @@
 /* ── Filters ─────────────────────────────────────────────────────────────── */
 
 .board-filters {
-  label { min-width: 120px; }
-  select { padding: 0.45rem 0.65rem; font-size: var(--font-sm); }
+  label {
+    /* Keep closed select as wide as typical option text so the native
+       popup matches the control instead of growing past it. */
+    flex: 0 0 14rem;
+    min-width: 14rem;
+    max-width: 14rem;
+  }
+
+  select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.45rem 0.65rem;
+    font-size: var(--font-sm);
+  }
 }
 
 .filter-actions {
@@ -28,53 +40,35 @@
   flex-shrink: 0;
 }
 
-/* ── Save view ───────────────────────────────────────────────────────────── */
-
-.save-view-panel { margin-bottom: 1rem; }
-
-.save-view-form {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.65rem;
-  align-items: center;
-}
-
-.shared-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--text-muted);
-  font-size: var(--font-sm);
-  white-space: nowrap;
-  input { accent-color: var(--accent); }
-}
-
-.view-list {
-  list-style: none;
-  margin: 0.75rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.4rem;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: var(--font-sm);
-    padding: 0.35rem 0;
-    border-top: 1px solid var(--border);
-    span:first-child { flex: 1; }
-  }
-}
-
 /* ── Quick add ───────────────────────────────────────────────────────────── */
 
 .quick-add { margin-bottom: 1rem; }
 
 .quick-add-form {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 0.75rem;
+  align-items: center;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr 1fr;
+
+    input {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.inline-check {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+
+  input {
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--accent);
+  }
 }
 
 /* ── Board scroll container ──────────────────────────────────────────────── */
@@ -452,8 +446,7 @@
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .quick-add-form,
-  .save-view-form {
+  .quick-add-form {
     grid-template-columns: 1fr;
   }
 

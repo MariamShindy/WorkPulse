@@ -4,4 +4,10 @@ using WorkPulse.Application.Projects.Dtos;
 
 namespace WorkPulse.Application.Projects.Queries.ListProjects;
 
-public sealed record ListProjectsQuery(PaginationParams Pagination, SortParams? Sort = null, Guid? TeamId = null, ProjectStatus? Status = null, bool IncludeArchived = false) : IRequest<Result<PagedList<ProjectDto>>>, IBaseRequest, IQuery;
+public sealed record ListProjectsQuery(
+	PaginationParams Pagination,
+	SortParams? Sort = null,
+	Guid? TeamId = null,
+	ProjectStatus? Status = null,
+	bool IncludeArchived = false,
+	bool ArchivedOnly = false) : IRequest<Result<PagedList<ProjectDto>>>, IBaseRequest, IQuery;

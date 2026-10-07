@@ -21,7 +21,7 @@
     <input type="text" formControlName="name" placeholder="Team name" />
     <input type="text" formControlName="key" placeholder="Key (optional)" maxlength="6" />
     <input type="color" formControlName="color" aria-label="Team color" />
-    <button type="submit" class="btn btn-primary" [class.is-busy]="creating()" [disabled]="creating()">
+    <button type="submit" class="btn btn-primary" [class.is-busy]="creating()" [disabled]="creating() || form.invalid">
       {{ creating() ? 'Creating…' : 'Create team' }}
     </button>
   </form>

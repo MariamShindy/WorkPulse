@@ -20,7 +20,16 @@ namespace WorkPulse.API.Controllers;
 public sealed class ProjectsController(ISender sender) : ControllerBase
 {
 	[HttpGet]
-	public async Task<ActionResult<PagedList<ProjectDto>>> List([FromQuery] Guid? teamId, [FromQuery] ProjectStatus? status, [FromQuery] bool includeArchived = false, [FromQuery] string? sortBy = null, [FromQuery] string sortDirection = "asc", [FromQuery] int page = 1, [FromQuery] int pageSize = 25, CancellationToken ct = default(CancellationToken))
+	public async Task<ActionResult<PagedList<ProjectDto>>> List(
+		[FromQuery] Guid? teamId,
+		[FromQuery] ProjectStatus? status,
+		[FromQuery] bool includeArchived = false,
+		[FromQuery] bool archivedOnly = false,
+		[FromQuery] string? sortBy = null,
+		[FromQuery] string sortDirection = "asc",
+		[FromQuery] int page = 1,
+		[FromQuery] int pageSize = 25,
+		CancellationToken ct = default(CancellationToken))
 	{
 		return (await sender.Send((IRequest<Result<PagedList<ProjectDto>>>)new ListProjectsQuery(new PaginationParams
 		{
@@ -30,7 +39,7 @@ public sealed class ProjectsController(ISender sender) : ControllerBase
 		{
 			SortBy = sortBy,
 			SortDirection = sortDirection
-		}, teamId, status, includeArchived), ct)).ToActionResult();
+		}, teamId, status, includeArchived || archivedOnly, archivedOnly), ct)).ToActionResult();
 	}
 
 	[HttpGet("{projectId:guid}")]

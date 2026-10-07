@@ -76,58 +76,21 @@
         }
       </select>
     </label>
-    <label>
-      <span>Saved view</span>
-      <select #viewSelect (change)="applySavedView(viewSelect.value); viewSelect.value = ''">
-        <option value="">Apply…</option>
-        @for (view of savedViews(); track view.id) {
-          <option [value]="view.id">{{ view.name }}</option>
-        }
-      </select>
-    </label>
     <div class="filter-actions">
       @if (hasActiveFilters()) {
         <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear filters</button>
       }
-      <button type="button" class="btn btn-subtle btn-sm" (click)="saveViewOpen.set(!saveViewOpen())">
-        {{ saveViewOpen() ? 'Cancel' : 'Save view' }}
-      </button>
     </div>
   </div>
-
-  @if (saveViewOpen()) {
-    <section class="panel save-view-panel">
-      <form [formGroup]="saveViewForm" (ngSubmit)="saveCurrentView()" class="save-view-form">
-        <input type="text" formControlName="name" placeholder="View name (e.g. My sprint focus)" />
-        <label class="shared-check">
-          <input type="checkbox" formControlName="isShared" />
-          <span>Shared</span>
-        </label>
-        <button type="submit" class="btn btn-primary btn-sm" [disabled]="saveViewForm.invalid">Save</button>
-      </form>
-      @if (savedViews().length > 0) {
-        <ul class="view-list">
-          @for (view of savedViews(); track view.id) {
-            <li>
-              <span>{{ view.name }}</span>
-              @if (view.isShared) {
-                <span class="badge badge-accent">Shared</span>
-              }
-              <button type="button" class="btn btn-ghost btn-sm" (click)="deleteSavedView(view.id)">
-                Delete
-              </button>
-            </li>
-          }
-        </ul>
-      }
-    </section>
-  }
 
   <section class="quick-add panel">
     <form [formGroup]="form" (ngSubmit)="createTask()" class="quick-add-form">
       <input type="text" formControlName="title" placeholder="Quick add — type a task title and press Enter…" />
-      <button type="submit" class="btn btn-primary" [class.is-busy]="creating()" [disabled]="creating()">
-        {{ creating() ? 'Adding…' : '+ Add task' }}
+      <button type="submit" class="btn btn-primary" [class.is-busy]="creating()" [disabled]="creating() || form.invalid">
+        {{ creating() ? 'Adding…' : 'Quick add' }}
+      </button>
+      <button type="button" class="btn btn-subtle" (click)="openFullAdd()" [disabled]="!selectedTeamId() || states().length === 0">
+        Full add
       </button>
     </form>
   </section>
@@ -253,4 +216,113 @@
       (updated)="onTaskUpdated($event)"
       (deleted)="onTaskDeleted($event)" />
   }
+</app-drawer>
+
+<app-drawer [open]="fullAddOpen()" title="New task" (closed)="closeFullAdd()">
+  <form [formGroup]="fullForm" (ngSubmit)="createFullTask()" class="form-grid">
+    <label>
+      <span>Title</span>
+      <input type="text" formControlName="title" placeholder="Task title" />
+      @if (fullForm.controls.title.touched && fullForm.controls.title.invalid) {
+        <span class="field-error">Title is required.</span>
+      }
+    </label>
+
+    <label>
+      <span>Description</span>
+      <textarea formControlName="description" rows="4" placeholder="Optional details…"></textarea>
+    </label>
+
+    <div class="form-row">
+      <label>
+        <span>Status</span>
+        <select formControlName="workflowStateId">
+          @for (state of states(); track state.id) {
+            <option [value]="state.id">{{ state.name }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Priority</span>
+        <select formControlName="priority">
+          @for (priority of priorities; track priority) {
+            <option [value]="priority">{{ priority }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Due date</span>
+        <input type="date" formControlName="dueDate" />
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>
+        <span>Project</span>
+        <select formControlName="projectId">
+          <option value="">None</option>
+          @for (project of projects(); track project.id) {
+            <option [value]="project.id">{{ project.name }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Epic</span>
+        <select formControlName="epicId">
+          <option value="">None</option>
+          @for (epic of epics(); track epic.id) {
+            <option [value]="epic.id">{{ epic.title }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Sprint</span>
+        <select formControlName="sprintId">
+          <option value="">None</option>
+          @for (sprint of sprints(); track sprint.id) {
+            <option [value]="sprint.id">{{ sprint.name }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="form-row">
+      <label>
+        <span>Assignee</span>
+        <select formControlName="assigneeId">
+          <option value="">Unassigned</option>
+          @for (member of companyMembers(); track member.userId) {
+            <option [value]="member.userId">{{ member.fullName }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Story points</span>
+        <input type="number" formControlName="storyPoints" min="0" />
+      </label>
+      <label>
+        <span>Estimated hours</span>
+        <input type="number" formControlName="estimatedHours" min="0" step="0.5" />
+      </label>
+    </div>
+
+    <label class="inline-check">
+      <span>Blocked</span>
+      <input type="checkbox" formControlName="isBlocked" />
+    </label>
+
+    @if (fullForm.controls.isBlocked.value) {
+      <label>
+        <span>Blocked reason</span>
+        <input type="text" formControlName="blockedReason" />
+      </label>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" (click)="closeFullAdd()">Cancel</button>
+      <button type="submit" class="btn btn-primary" [class.is-busy]="creatingFull()" [disabled]="creatingFull() || fullForm.invalid">
+        {{ creatingFull() ? 'Creating…' : 'Create task' }}
+      </button>
+    </div>
+  </form>
 </app-drawer>
